@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { useAuthStore } from './store/authStore'
 import { Sidebar } from './components/Sidebar'
 import type { ViewType } from './components/Sidebar'
@@ -33,12 +33,12 @@ export const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#161413] flex flex-col items-center justify-center text-white font-hud">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center shadow-2xl shadow-rose-500/30 animate-pulse mb-4">
-          <span className="font-black text-2xl text-black">nE</span>
+      <div className="min-h-screen bg-[#121110] flex flex-col items-center justify-center text-white font-hud">
+        <div className="w-16 h-16 rounded-2xl bg-[#23201d] border border-white/10 flex items-center justify-center shadow-2xl animate-pulse mb-4">
+          <span className="font-black text-2xl text-white">nE</span>
         </div>
         <p className="text-xs font-semibold tracking-widest text-zinc-400 flex items-center gap-2">
-          ESTABLISHING NEURAL AUDIO LINK <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+          ESTABLISHING NEURAL AUDIO LINK <Sparkles className="w-3.5 h-3.5 text-rose-500 animate-spin" />
         </p>
       </div>
     )
@@ -84,31 +84,34 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen flex bg-[#161413] text-[#f5f3f0] overflow-hidden select-none font-sans">
-      {/* Column 1: Left Navigation & Playlists matching Image 2 */}
-      <Sidebar
-        currentView={currentView}
-        onViewChange={(view) => {
-          setCurrentView(view)
-          if (view !== 'album-detail') setSelectedAlbum(null)
-        }}
-      />
-
-      {/* Column 2: Center Main Content Stream matching Image 2 */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#1b1917] overflow-hidden border-r border-[#302c28]/80">
-        <Header
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSelectAlbum={handleSelectAlbum}
-          onOpenSettings={() => setCurrentView('settings')}
+    <div className="h-screen w-screen bg-[#0e0d0c] p-2 md:p-3.5 flex items-center justify-center select-none overflow-hidden font-sans">
+      {/* Outer Floating Hardware Bezel matching Image 2 */}
+      <div className="w-full h-full bg-[#181615] rounded-[28px] md:rounded-[32px] border border-[#2f2b27] flex overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative">
+        {/* Column 1: Left Navigation & Playlists matching Image 2 */}
+        <Sidebar
+          currentView={currentView}
+          onViewChange={(view) => {
+            setCurrentView(view)
+            if (view !== 'album-detail') setSelectedAlbum(null)
+          }}
         />
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {renderMainView()}
-        </div>
-      </main>
 
-      {/* Column 3: Dedicated Right Now Playing & Audio HUD Panel matching Image 2 */}
-      <NowPlayingPanel />
+        {/* Column 2: Center Main Content Stream matching Image 2 */}
+        <main className="flex-1 flex flex-col min-w-0 bg-[#1e1b19] overflow-hidden border-r border-[#2e2a26]">
+          <Header
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSelectAlbum={handleSelectAlbum}
+            onOpenSettings={() => setCurrentView('settings')}
+          />
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            {renderMainView()}
+          </div>
+        </main>
+
+        {/* Column 3: Dedicated Right Now Playing & Audio HUD Panel matching Image 2 */}
+        <NowPlayingPanel />
+      </div>
     </div>
   )
 }
