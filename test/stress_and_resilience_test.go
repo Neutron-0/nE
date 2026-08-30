@@ -84,6 +84,7 @@ func setupStressEnvironment(t *testing.T) (
 		nil,
 		nil,
 		nil,
+		nil,
 	)
 
 	// Create Admin User

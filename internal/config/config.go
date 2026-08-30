@@ -20,6 +20,7 @@ type Config struct {
 	Streaming StreamingConfig `yaml:"streaming"`
 	Artwork   ArtworkConfig   `yaml:"artwork"`
 	Paths     PathsConfig     `yaml:"paths"`
+	GitHub    GitHubConfig    `yaml:"github"`
 }
 
 type ServerConfig struct {
@@ -78,6 +79,13 @@ type PathsConfig struct {
 	MusicDir  string `yaml:"music_dir"`
 }
 
+type GitHubConfig struct {
+	Token    string `yaml:"token"`
+	Repo     string `yaml:"repo"`     // e.g. "Neutron-0/nE"
+	Branch   string `yaml:"branch"`   // e.g. "main"
+	AutoSync bool   `yaml:"auto_sync"`
+}
+
 // DefaultConfig returns safe production-ready defaults.
 func DefaultConfig() *Config {
 	return &Config{
@@ -129,6 +137,11 @@ func DefaultConfig() *Config {
 			DataDir:   "data",
 			CacheDir:  "cache",
 			MusicDir:  "music",
+		},
+		GitHub: GitHubConfig{
+			Repo:     "Neutron-0/nE",
+			Branch:   "main",
+			AutoSync: true,
 		},
 	}
 }
@@ -234,5 +247,17 @@ func applyEnvOverrides(cfg *Config) {
 		if count, err := strconv.Atoi(v); err == nil {
 			cfg.Streaming.MaxConcurrentTranscodes = count
 		}
+	}
+	if v := os.Getenv("GITHUB_TOKEN"); v != "" {
+		cfg.GitHub.Token = v
+	}
+	if v := os.Getenv("GITHUB_REPO"); v != "" {
+		cfg.GitHub.Repo = v
+	}
+	if v := os.Getenv("GITHUB_BRANCH"); v != "" {
+		cfg.GitHub.Branch = v
+	}
+	if v := os.Getenv("GITHUB_AUTO_SYNC"); v != "" {
+		cfg.GitHub.AutoSync = strings.ToLower(v) == "true" || v == "1"
 	}
 }

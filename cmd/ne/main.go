@@ -163,6 +163,7 @@ func runServer() {
 	smartPlaylistService := service.NewSmartPlaylistService(catalogRepo)
 	lyricsService := service.NewLyricsService(catalogRepo, cfg.Paths.CacheDir)
 	artistMetaService := service.NewArtistMetaService(catalogRepo)
+	githubSyncService := service.NewGitHubSyncService(db, &cfg.GitHub, logger)
 	subsonicHandler := subsonic.NewSubsonicHandler(userRepo, catalogService, streamService, artworkService, annoService)
 
 	// Auto-discovery: If no libraries exist, automatically detect and register default music folder
@@ -215,6 +216,7 @@ func runServer() {
 		lyricsService,
 		artistMetaService,
 		subsonicHandler,
+		githubSyncService,
 	)
 
 	if err := server.Start(ctx); err != nil {

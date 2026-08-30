@@ -1,6 +1,17 @@
-﻿import React, { useEffect, useState } from 'react'
-import { FolderPlus, RefreshCw, Server, HardDrive, Check, AlertCircle } from 'lucide-react'
-import type { Library, Diagnostics } from '../types'
+import React, { useEffect, useState } from 'react'
+import {
+  FolderPlus,
+  RefreshCw,
+  Server,
+  HardDrive,
+  Check,
+  AlertCircle,
+  GitBranch,
+  CloudUpload,
+  Lock,
+  Loader2,
+} from 'lucide-react'
+import type { Library, Diagnostics, GitHubSyncStatus } from '../types'
 import { api } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 
@@ -15,18 +26,35 @@ export const SettingsView: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // GitHub Sync State
+  const [ghStatus, setGhStatus] = useState<GitHubSyncStatus | null>(null)
+  const [ghToken, setGhToken] = useState('')
+  const [ghRepo, setGhRepo] = useState('Neutron-0/nE')
+  const [ghBranch, setGhBranch] = useState('main')
+  const [ghAutoSync, setGhAutoSync] = useState(true)
+  const [isSavingGh, setIsSavingGh] = useState(false)
+  const [isTestingGh, setIsTestingGh] = useState(false)
+  const [isBackingUpAll, setIsBackingUpAll] = useState(false)
+
   useEffect(() => {
     loadData()
   }, [])
 
   const loadData = async () => {
     try {
-      const [libRes, diagRes] = await Promise.all([
+      const [libRes, diagRes, ghRes] = await Promise.all([
         api.getLibraries(),
         api.getDiagnostics(),
+        api.getGitHubSyncStatus().catch(() => null),
       ])
       setLibraries(libRes.items || [])
       setDiagnostics(diagRes)
+      if (ghRes) {
+        setGhStatus(ghRes)
+        setGhRepo(ghRes.repo || 'Neutron-0/nE')
+        setGhBranch(ghRes.branch || 'main')
+        setGhAutoSync(ghRes.autoSync)
+      }
     } catch (err: any) {
       console.error('Failed to load settings data:', err)
     }
@@ -69,6 +97,60 @@ export const SettingsView: React.FC = () => {
     }
   }
 
+  const handleSaveGitHubConfig = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSavingGh(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const updated = await api.updateGitHubSync({
+        token: ghToken || undefined,
+        repo: ghRepo.trim(),
+        branch: ghBranch.trim(),
+        autoSync: ghAutoSync,
+      })
+      setGhStatus(updated)
+      setGhToken('')
+      setMessage('GitHub Cloud Backup configuration updated successfully!')
+    } catch (err: any) {
+      setError(err.message || 'Failed to update GitHub configuration')
+    } finally {
+      setIsSavingGh(false)
+    }
+  }
+
+  const handleTestGitHubConnection = async () => {
+    setIsTestingGh(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const res = await api.testGitHubConnection()
+      setMessage(res.message || 'GitHub connection verified successfully!')
+    } catch (err: any) {
+      setError(err.message || 'GitHub connection test failed')
+    } finally {
+      setIsTestingGh(false)
+    }
+  }
+
+  const handleBackupAll = async () => {
+    setIsBackingUpAll(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const res = await api.backupAllToGitHub()
+      setMessage(res.message || `Backed up ${res.count} songs and database snapshot to GitHub!`)
+      loadData()
+    } catch (err: any) {
+      setError(err.message || 'Failed to backup library to GitHub')
+    } finally {
+      setIsBackingUpAll(false)
+    }
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-4xl space-y-8 select-none">
       <div>
@@ -84,7 +166,7 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {message && (
-        <div className="p-3.5 rounded-2xl liquid-glass border-white/20 flex items-center gap-3 text-xs text-white font-medium">
+        <div className="p-3.5 rounded-2xl liquid-glass border-emerald-500/40 flex items-center gap-3 text-xs text-emerald-300 font-medium">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{message}</span>
         </div>
@@ -97,7 +179,142 @@ export const SettingsView: React.FC = () => {
         </div>
       )}
 
-      {/* Libraries Section with Liquid Glass */}
+      {/* GitHub Cloud Backup & Sync Card */}
+      {user?.isAdmin && (
+        <div className="liquid-glass rounded-[24px] p-6 shadow-xl space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl liquid-glass flex items-center justify-center text-white">
+                <GitBranch className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white tracking-tight">
+                  GitHub Cloud Backup & Persistence
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Automatically commits & backs up uploaded songs and database snapshots to GitHub
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 font-hud text-[11px]">
+              {ghStatus?.configured ? (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  CONNECTED // {ghStatus.repo}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  TOKEN NEEDED
+                </span>
+              )}
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveGitHubConfig} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-1">
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 font-hud">
+                  GitHub Token (PAT)
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  <input
+                    type="password"
+                    placeholder={ghStatus?.tokenHint ? `Saved (${ghStatus.tokenHint})` : 'ghp_••••••••••••'}
+                    value={ghToken}
+                    onChange={(e) => setGhToken(e.target.value)}
+                    className="w-full liquid-glass-input rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 font-hud">
+                  Repository (Owner/Repo)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={ghRepo}
+                  onChange={(e) => setGhRepo(e.target.value)}
+                  placeholder="Neutron-0/nE"
+                  className="w-full liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none font-hud"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 font-hud">
+                  Target Branch
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={ghBranch}
+                  onChange={(e) => setGhBranch(e.target.value)}
+                  placeholder="main"
+                  className="w-full liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none font-hud"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <label className="flex items-center gap-2 text-xs font-semibold text-zinc-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ghAutoSync}
+                  onChange={(e) => setGhAutoSync(e.target.checked)}
+                  className="w-4 h-4 rounded accent-white cursor-pointer"
+                />
+                <span>Automatically commit songs to GitHub repository on UI upload</span>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="submit"
+                  disabled={isSavingGh}
+                  className="px-5 py-2.5 rounded-full bg-white hover:bg-zinc-200 text-black font-bold text-xs transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingGh ? 'Saving...' : 'Save Configuration'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestGitHubConnection}
+                  disabled={isTestingGh || !ghStatus?.configured}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full liquid-glass-pill text-white font-semibold text-xs hover:bg-white/[0.1] transition-all disabled:opacity-40 cursor-pointer"
+                >
+                  {isTestingGh && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Test Connection
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBackupAll}
+                disabled={isBackingUpAll || !ghStatus?.configured}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all disabled:opacity-40 cursor-pointer shadow-lg"
+              >
+                {isBackingUpAll ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <CloudUpload className="w-3.5 h-3.5" />
+                )}
+                <span>{isBackingUpAll ? 'Backing Up Songs & DB...' : 'Backup All Songs & DB to GitHub'}</span>
+              </button>
+            </div>
+
+            <p className="text-[11px] text-zinc-500 leading-relaxed font-sans pt-2">
+              💡 <span className="font-semibold text-zinc-400">How to get a Token:</span> Go to GitHub → Settings → Developer Settings → Personal Access Tokens → Generate fine-grained token with <code className="text-white bg-white/10 px-1 py-0.5 rounded font-hud text-[10px]">Contents: Read and write</code> for <code className="text-white bg-white/10 px-1 py-0.5 rounded font-hud text-[10px]">{ghRepo || 'Neutron-0/nE'}</code>.
+            </p>
+          </form>
+        </div>
+      )}
+
+      {/* Audio Libraries Section with Liquid Glass */}
       <div className="liquid-glass rounded-[24px] p-6 shadow-xl space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl liquid-glass flex items-center justify-center text-white">

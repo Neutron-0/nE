@@ -56,6 +56,7 @@ func NewServer(
 	lyricsService *service.LyricsService,
 	artistMetaService *service.ArtistMetaService,
 	subsonicHandler *subsonic.SubsonicHandler,
+	githubSyncService *service.GitHubSyncService,
 ) *Server {
 	r := chi.NewRouter()
 
@@ -73,8 +74,8 @@ func NewServer(
 	}
 	if catalogService != nil {
 		s.catalogH = NewCatalogHandler(catalogService, artistMetaService)
-		s.adminH = NewAdminHandler(catalogService)
-		s.uploadH = NewUploadHandler(catalogService)
+		s.adminH = NewAdminHandler(catalogService, githubSyncService, cfg.Paths.MusicDir, cfg.Database.Path)
+		s.uploadH = NewUploadHandler(catalogService, githubSyncService)
 	}
 	if streamService != nil {
 		s.streamH = NewStreamHandler(streamService)

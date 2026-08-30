@@ -14,6 +14,7 @@ import type {
   LyricsResult,
   SmartPlaylistSummary,
   ArtistBiography,
+  GitHubSyncStatus,
 } from '../types'
 
 const BASE_URL = '/api/v1'
@@ -268,6 +269,30 @@ class ApiClient {
     }
 
     return response.json()
+  }
+
+  // GitHub Cloud Backup & Repository Sync
+  async getGitHubSyncStatus(): Promise<GitHubSyncStatus> {
+    return this.request<GitHubSyncStatus>('/admin/github-sync')
+  }
+
+  async updateGitHubSync(data: { token?: string; repo: string; branch: string; autoSync: boolean }): Promise<GitHubSyncStatus> {
+    return this.request<GitHubSyncStatus>('/admin/github-sync', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async testGitHubConnection(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/admin/github-sync/test', {
+      method: 'POST',
+    })
+  }
+
+  async backupAllToGitHub(): Promise<{ success: boolean; message: string; count: number }> {
+    return this.request<{ success: boolean; message: string; count: number }>('/admin/github-sync/backup-all', {
+      method: 'POST',
+    })
   }
 
   getStreamUrl(trackId: string): string {

@@ -135,6 +135,7 @@ func setupRealServer(t *testing.T) (
 		nil,
 		nil,
 		nil,
+		nil,
 	)
 
 	// Create root admin

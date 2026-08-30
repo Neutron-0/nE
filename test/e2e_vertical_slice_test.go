@@ -95,6 +95,7 @@ func TestE2E_CompleteFullMVPArchitecture(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		nil,
 	)
 	router := server.Router()
 

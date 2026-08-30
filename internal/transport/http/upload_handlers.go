@@ -1,4 +1,4 @@
-﻿package http
+package http
 
 import (
 	"context"
@@ -15,10 +15,14 @@ import (
 
 type UploadHandler struct {
 	catalogService *service.CatalogService
+	githubSync     *service.GitHubSyncService
 }
 
-func NewUploadHandler(catalogService *service.CatalogService) *UploadHandler {
-	return &UploadHandler{catalogService: catalogService}
+func NewUploadHandler(catalogService *service.CatalogService, githubSync *service.GitHubSyncService) *UploadHandler {
+	return &UploadHandler{
+		catalogService: catalogService,
+		githubSync:     githubSync,
+	}
 }
 
 type UploadResponse struct {
@@ -136,9 +140,19 @@ func (h *UploadHandler) UploadAudio(w http.ResponseWriter, r *http.Request) {
 		_, _ = h.catalogService.TriggerScan(context.Background(), libID)
 	}(targetLib.ID)
 
+	// Trigger GitHub repository backup asynchronously if configured
+	if h.githubSync != nil {
+		go func(libPath string, files []string) {
+			for _, f := range files {
+				fullPath := filepath.Join(libPath, f)
+				_, _ = h.githubSync.BackupTrack(context.Background(), fullPath, f)
+			}
+		}(targetLib.Path, savedFiles)
+	}
+
 	JSON(w, http.StatusOK, UploadResponse{
 		Success:   true,
-		Message:   fmt.Sprintf("Successfully saved %d audio file(s). Automatic database ingestion initiated.", len(savedFiles)),
+		Message:   fmt.Sprintf("Successfully saved %d audio file(s). Automatic database ingestion & GitHub backup initiated.", len(savedFiles)),
 		Files:     savedFiles,
 		LibraryID: targetLib.ID,
 	})

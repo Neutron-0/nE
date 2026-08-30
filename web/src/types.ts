@@ -193,3 +193,13 @@ export interface ArtistBiography {
   imageUrl?: string
   source: string
 }
+
+export interface GitHubSyncStatus {
+  configured: boolean
+  repo: string
+  branch: string
+  autoSync: boolean
+  lastSyncAt?: string
+  lastError?: string
+  tokenHint?: string
+}

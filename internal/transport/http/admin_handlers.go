@@ -1,4 +1,4 @@
-﻿package http
+package http
 
 import (
 	"encoding/json"
@@ -13,10 +13,18 @@ import (
 
 type AdminHandler struct {
 	catalogService *service.CatalogService
+	githubSync     *service.GitHubSyncService
+	musicDir       string
+	dbPath         string
 }
 
-func NewAdminHandler(catalogService *service.CatalogService) *AdminHandler {
-	return &AdminHandler{catalogService: catalogService}
+func NewAdminHandler(catalogService *service.CatalogService, githubSync *service.GitHubSyncService, musicDir, dbPath string) *AdminHandler {
+	return &AdminHandler{
+		catalogService: catalogService,
+		githubSync:     githubSync,
+		musicDir:       musicDir,
+		dbPath:         dbPath,
+	}
 }
 
 func (h *AdminHandler) Routes() chi.Router {
@@ -30,6 +38,12 @@ func (h *AdminHandler) Routes() chi.Router {
 	r.Get("/stats", h.GetStats)
 	r.Get("/scan/events", h.ScanEventsSSE)
 
+	// GitHub Sync & Cloud Backup endpoints
+	r.Get("/github-sync", h.GetGitHubSyncStatus)
+	r.Post("/github-sync", h.UpdateGitHubSyncConfig)
+	r.Post("/github-sync/test", h.TestGitHubConnection)
+	r.Post("/github-sync/backup-all", h.BackupAllToGitHub)
+
 	return r
 }
 
@@ -40,6 +54,13 @@ type CreateLibraryRequest struct {
 
 type TriggerScanRequest struct {
 	LibraryID string `json:"libraryId"`
+}
+
+type UpdateGitHubConfigRequest struct {
+	Token    string `json:"token"`
+	Repo     string `json:"repo"`
+	Branch   string `json:"branch"`
+	AutoSync bool   `json:"autoSync"`
 }
 
 func (h *AdminHandler) ListLibraries(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +125,72 @@ func (h *AdminHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	JSON(w, http.StatusOK, stats)
+}
+
+func (h *AdminHandler) GetGitHubSyncStatus(w http.ResponseWriter, r *http.Request) {
+	if h.githubSync == nil {
+		JSON(w, http.StatusOK, map[string]any{
+			"configured": false,
+		})
+		return
+	}
+	JSON(w, http.StatusOK, h.githubSync.GetStatus())
+}
+
+func (h *AdminHandler) UpdateGitHubSyncConfig(w http.ResponseWriter, r *http.Request) {
+	if h.githubSync == nil {
+		RespondError(w, r, domain.ErrInvalidInput("GitHub sync service unavailable"))
+		return
+	}
+
+	var req UpdateGitHubConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		RespondError(w, r, domain.ErrInvalidInput("Invalid JSON body"))
+		return
+	}
+
+	if err := h.githubSync.UpdateConfig(r.Context(), req.Token, req.Repo, req.Branch, req.AutoSync); err != nil {
+		RespondError(w, r, err)
+		return
+	}
+
+	JSON(w, http.StatusOK, h.githubSync.GetStatus())
+}
+
+func (h *AdminHandler) TestGitHubConnection(w http.ResponseWriter, r *http.Request) {
+	if h.githubSync == nil {
+		RespondError(w, r, domain.ErrInvalidInput("GitHub sync service unavailable"))
+		return
+	}
+
+	if err := h.githubSync.TestConnection(r.Context()); err != nil {
+		RespondError(w, r, domain.ErrInvalidInput(fmt.Sprintf("Connection test failed: %v", err)))
+		return
+	}
+
+	JSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "GitHub connection verified successfully!",
+	})
+}
+
+func (h *AdminHandler) BackupAllToGitHub(w http.ResponseWriter, r *http.Request) {
+	if h.githubSync == nil {
+		RespondError(w, r, domain.ErrInvalidInput("GitHub sync service unavailable"))
+		return
+	}
+
+	count, err := h.githubSync.BackupAll(r.Context(), h.musicDir, h.dbPath)
+	if err != nil {
+		RespondError(w, r, err)
+		return
+	}
+
+	JSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": fmt.Sprintf("Backed up %d song(s) and database snapshot to GitHub successfully!", count),
+		"count":   count,
+	})
 }
 
 // ScanEventsSSE provides Server-Sent Events for real-time scan progress.
