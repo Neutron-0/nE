@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   AuthResult,
   CollectionResponse,
   User,
@@ -11,6 +11,9 @@
   PlaybackRecord,
   SearchResult,
   AdminStats,
+  LyricsResult,
+  SmartPlaylistSummary,
+  ArtistBiography,
 } from '../types'
 
 const BASE_URL = '/api/v1'
@@ -209,6 +212,25 @@ class ApiClient {
 
   async getDiagnostics(): Promise<Diagnostics> {
     return this.request<Diagnostics>('/health/diagnostics')
+  }
+
+  // Lyrics
+  async getLyrics(trackId: string): Promise<LyricsResult> {
+    return this.request<LyricsResult>(`/lyrics/${trackId}`)
+  }
+
+  // Smart Playlists
+  async getSmartPlaylists(): Promise<SmartPlaylistSummary[]> {
+    return this.request<SmartPlaylistSummary[]>('/smart-playlists')
+  }
+
+  async getSmartPlaylistTracks(id: string, limit = 50): Promise<CollectionResponse<Track>> {
+    return this.request<CollectionResponse<Track>>(`/smart-playlists/${id}?limit=${limit}`)
+  }
+
+  // Artist Editorial Metadata
+  async getArtistBiography(artistId: string): Promise<ArtistBiography> {
+    return this.request<ArtistBiography>(`/artists/${artistId}/biography`)
   }
 
   getStreamUrl(trackId: string): string {

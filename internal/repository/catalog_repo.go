@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"context"
@@ -771,4 +771,117 @@ func (r *CatalogRepository) GetStats(ctx context.Context) (*SystemStats, error) 
 	_ = r.db.Executor().QueryRowContext(ctx, `SELECT COUNT(*) FROM genres`).Scan(&stats.TotalGenres)
 	_ = r.db.Executor().QueryRowContext(ctx, `SELECT COUNT(*) FROM playlists`).Scan(&stats.TotalPlaylists)
 	return &stats, nil
+}
+
+// ----------------- Smart Playlists -----------------
+
+func (r *CatalogRepository) GetRecentlyAddedTracks(ctx context.Context, limit int) ([]*domain.Track, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `SELECT t.id, t.pid, t.library_id, t.path, t.folder_path, t.filename, t.title, t.sort_title, t.raw_artist, t.album_id,
+		a.title, ar.name, t.track_number, t.disc_number, t.disc_subtitle, t.year, t.duration, t.bit_rate, t.sample_rate, t.bit_depth,
+		t.channels, t.format, t.codec, t.file_size, t.rg_track_gain, t.rg_track_peak, t.rg_album_gain, t.rg_album_peak,
+		t.has_embedded_cover, t.mbz_track_id, t.mtime, t.created_at, t.updated_at
+		FROM tracks t
+		JOIN albums a ON t.album_id = a.id
+		JOIN artists ar ON a.album_artist_id = ar.id
+		ORDER BY t.created_at DESC LIMIT ?`
+	return r.scanTracksQuery(ctx, query, limit)
+}
+
+func (r *CatalogRepository) GetMostPlayedTracks(ctx context.Context, userID string, limit int) ([]*domain.Track, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `SELECT t.id, t.pid, t.library_id, t.path, t.folder_path, t.filename, t.title, t.sort_title, t.raw_artist, t.album_id,
+		a.title, ar.name, t.track_number, t.disc_number, t.disc_subtitle, t.year, t.duration, t.bit_rate, t.sample_rate, t.bit_depth,
+		t.channels, t.format, t.codec, t.file_size, t.rg_track_gain, t.rg_track_peak, t.rg_album_gain, t.rg_album_peak,
+		t.has_embedded_cover, t.mbz_track_id, t.mtime, t.created_at, t.updated_at
+		FROM tracks t
+		JOIN albums a ON t.album_id = a.id
+		JOIN artists ar ON a.album_artist_id = ar.id
+		JOIN user_track_annotations an ON t.id = an.track_id
+		WHERE an.user_id = ? AND an.play_count > 0
+		ORDER BY an.play_count DESC, an.last_played_at DESC LIMIT ?`
+	return r.scanTracksQuery(ctx, query, userID, limit)
+}
+
+func (r *CatalogRepository) GetRecentlyPlayedTracks(ctx context.Context, userID string, limit int) ([]*domain.Track, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `SELECT t.id, t.pid, t.library_id, t.path, t.folder_path, t.filename, t.title, t.sort_title, t.raw_artist, t.album_id,
+		a.title, ar.name, t.track_number, t.disc_number, t.disc_subtitle, t.year, t.duration, t.bit_rate, t.sample_rate, t.bit_depth,
+		t.channels, t.format, t.codec, t.file_size, t.rg_track_gain, t.rg_track_peak, t.rg_album_gain, t.rg_album_peak,
+		t.has_embedded_cover, t.mbz_track_id, t.mtime, t.created_at, t.updated_at
+		FROM tracks t
+		JOIN albums a ON t.album_id = a.id
+		JOIN artists ar ON a.album_artist_id = ar.id
+		JOIN playback_history h ON t.id = h.track_id
+		WHERE h.user_id = ?
+		ORDER BY h.played_at DESC LIMIT ?`
+	return r.scanTracksQuery(ctx, query, userID, limit)
+}
+
+func (r *CatalogRepository) GetTopRatedTracks(ctx context.Context, userID string, limit int) ([]*domain.Track, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `SELECT t.id, t.pid, t.library_id, t.path, t.folder_path, t.filename, t.title, t.sort_title, t.raw_artist, t.album_id,
+		a.title, ar.name, t.track_number, t.disc_number, t.disc_subtitle, t.year, t.duration, t.bit_rate, t.sample_rate, t.bit_depth,
+		t.channels, t.format, t.codec, t.file_size, t.rg_track_gain, t.rg_track_peak, t.rg_album_gain, t.rg_album_peak,
+		t.has_embedded_cover, t.mbz_track_id, t.mtime, t.created_at, t.updated_at
+		FROM tracks t
+		JOIN albums a ON t.album_id = a.id
+		JOIN artists ar ON a.album_artist_id = ar.id
+		JOIN user_track_annotations an ON t.id = an.track_id
+		WHERE an.user_id = ? AND an.rating >= 4
+		ORDER BY an.rating DESC, an.rated_at DESC LIMIT ?`
+	return r.scanTracksQuery(ctx, query, userID, limit)
+}
+
+func (r *CatalogRepository) GetRandomTracks(ctx context.Context, limit int) ([]*domain.Track, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `SELECT t.id, t.pid, t.library_id, t.path, t.folder_path, t.filename, t.title, t.sort_title, t.raw_artist, t.album_id,
+		a.title, ar.name, t.track_number, t.disc_number, t.disc_subtitle, t.year, t.duration, t.bit_rate, t.sample_rate, t.bit_depth,
+		t.channels, t.format, t.codec, t.file_size, t.rg_track_gain, t.rg_track_peak, t.rg_album_gain, t.rg_album_peak,
+		t.has_embedded_cover, t.mbz_track_id, t.mtime, t.created_at, t.updated_at
+		FROM tracks t
+		JOIN albums a ON t.album_id = a.id
+		JOIN artists ar ON a.album_artist_id = ar.id
+		ORDER BY RANDOM() LIMIT ?`
+	return r.scanTracksQuery(ctx, query, limit)
+}
+
+func (r *CatalogRepository) scanTracksQuery(ctx context.Context, query string, args ...any) ([]*domain.Track, error) {
+	rows, err := r.db.Executor().QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tracks []*domain.Track
+	for rows.Next() {
+		var t domain.Track
+		var discSub, mbz sql.NullString
+		if err := rows.Scan(
+			&t.ID, &t.PID, &t.LibraryID, &t.Path, &t.FolderPath, &t.Filename, &t.Title, &t.SortTitle, &t.RawArtist, &t.AlbumID,
+			&t.AlbumTitle, &t.AlbumArtist, &t.TrackNumber, &t.DiscNumber, &discSub, &t.Year, &t.Duration, &t.BitRate, &t.SampleRate, &t.BitDepth,
+			&t.Channels, &t.Format, &t.Codec, &t.FileSize, &t.RGTrackGain, &t.RGTrackPeak, &t.RGAlbumGain, &t.RGAlbumPeak,
+			&t.HasEmbeddedCover, &mbz, &t.MTime, &t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if discSub.Valid {
+			t.DiscSubtitle = discSub.String
+		}
+		if mbz.Valid {
+			t.MbzTrackID = mbz.String
+		}
+		tracks = append(tracks, &t)
+	}
+	return tracks, nil
 }

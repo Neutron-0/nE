@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import {
   Play,
   Pause,
@@ -11,9 +11,11 @@ import {
   VolumeX,
   Music,
   Heart,
+  Mic2,
 } from 'lucide-react'
 import { usePlayerStore } from '../store/playerStore'
 import { api } from '../lib/api'
+import { LyricsOverlay } from './LyricsOverlay'
 
 export const PlayerBar: React.FC = () => {
   const {
@@ -37,6 +39,7 @@ export const PlayerBar: React.FC = () => {
   } = usePlayerStore()
 
   const [imgError, setImgError] = useState(false)
+  const [showLyrics, setShowLyrics] = useState(false)
 
   if (!currentTrack) {
     return (
@@ -176,8 +179,20 @@ export const PlayerBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Right: Volume Controls */}
-      <div className="flex items-center justify-end gap-2.5 w-1/4">
+      {/* Right: Volume & Lyrics Controls */}
+      <div className="flex items-center justify-end gap-3 w-1/4">
+        <button
+          onClick={() => setShowLyrics(!showLyrics)}
+          title="Toggle Synchronized Lyrics"
+          className={`p-2 rounded-lg transition-all cursor-pointer ${
+            showLyrics
+              ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+          }`}
+        >
+          <Mic2 className="w-4 h-4" />
+        </button>
+
         <button
           onClick={toggleMute}
           title={isMuted ? 'Unmute' : 'Mute'}
@@ -198,6 +213,8 @@ export const PlayerBar: React.FC = () => {
           onChange={(e) => setVolume(parseFloat(e.target.value))}
           className="w-24 h-1 bg-zinc-800 accent-rose-500 cursor-pointer rounded-full"
         />
+
+        <LyricsOverlay isOpen={showLyrics} onClose={() => setShowLyrics(false)} />
       </div>
     </footer>
   )

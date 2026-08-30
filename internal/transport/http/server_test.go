@@ -1,4 +1,4 @@
-﻿package http_test
+package http_test
 
 import (
 	"bytes"
@@ -82,6 +82,10 @@ func newTestServer(t *testing.T, dbChecker func() error) (
 		artService,
 		annoService,
 		plService,
+		nil,
+		nil,
+		nil,
+		nil,
 	)
 
 	return srv, authService, catService, streamService, artService, annoService, plService, catRepo, db, dir

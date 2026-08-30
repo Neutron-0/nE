@@ -1,4 +1,4 @@
-﻿package test
+package test
 
 import (
 	"bytes"
@@ -91,6 +91,10 @@ func TestE2E_CompleteFullMVPArchitecture(t *testing.T) {
 		artworkService,
 		annoService,
 		playlistService,
+		nil,
+		nil,
+		nil,
+		nil,
 	)
 	router := server.Router()
 

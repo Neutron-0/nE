@@ -1,4 +1,4 @@
-﻿package test_test
+package test_test
 
 import (
 	"bytes"
@@ -131,6 +131,10 @@ func setupRealServer(t *testing.T) (
 		artService,
 		annoService,
 		plService,
+		nil,
+		nil,
+		nil,
+		nil,
 	)
 
 	// Create root admin

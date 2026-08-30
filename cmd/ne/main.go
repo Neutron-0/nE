@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"ne/internal/auth"
 	"ne/internal/config"
@@ -15,6 +16,7 @@ import (
 	"ne/internal/scanner"
 	"ne/internal/service"
 	transport "ne/internal/transport/http"
+	"ne/internal/transport/subsonic"
 )
 
 var (
@@ -158,6 +160,36 @@ func runServer() {
 	artworkService := service.NewArtworkService(catalogRepo, cfg.Paths.CacheDir)
 	annoService := service.NewAnnotationService(annoRepo)
 	playlistService := service.NewPlaylistService(playlistRepo)
+	smartPlaylistService := service.NewSmartPlaylistService(catalogRepo)
+	lyricsService := service.NewLyricsService(catalogRepo, cfg.Paths.CacheDir)
+	artistMetaService := service.NewArtistMetaService(catalogRepo)
+	subsonicHandler := subsonic.NewSubsonicHandler(userRepo, catalogService, streamService, artworkService, annoService)
+
+	// Auto-discovery: If no libraries exist, automatically detect and register default music folder
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		bgCtx := context.Background()
+		libs, err := catalogService.ListLibraries(bgCtx)
+		if err == nil && len(libs) == 0 {
+			musicDir := cfg.Paths.MusicDir
+			if _, err := os.Stat(musicDir); err == nil {
+				logger.Info("Auto-discovering music directory on startup", "path", musicDir)
+				lib, err := catalogService.CreateLibrary(bgCtx, "Default Library", musicDir)
+				if err == nil {
+					logger.Info("Triggering startup scan for default library", "libraryId", lib.ID)
+					_, _ = catalogService.TriggerScan(bgCtx, lib.ID)
+				}
+			}
+		} else if len(libs) > 0 {
+			stats, _ := catalogRepo.GetStats(bgCtx)
+			if stats == nil || stats.TotalTracks == 0 || cfg.Scanner.ScanOnStartup {
+				logger.Info("Triggering startup library scan", "libraryCount", len(libs))
+				for _, l := range libs {
+					_, _ = catalogService.TriggerScan(bgCtx, l.ID)
+				}
+			}
+		}
+	}()
 
 	// Context for graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -175,6 +207,10 @@ func runServer() {
 		artworkService,
 		annoService,
 		playlistService,
+		smartPlaylistService,
+		lyricsService,
+		artistMetaService,
+		subsonicHandler,
 	)
 
 	if err := server.Start(ctx); err != nil {

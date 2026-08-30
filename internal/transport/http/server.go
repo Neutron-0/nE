@@ -13,6 +13,7 @@ import (
 	"ne/internal/config"
 	"ne/internal/domain"
 	"ne/internal/service"
+	"ne/internal/transport/subsonic"
 	"ne/web"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -32,6 +33,10 @@ type Server struct {
 	artworkH    *ArtworkHandler
 	annoH       *AnnotationHandler
 	playlistH   *PlaylistHandler
+	smartH      *SmartPlaylistHandler
+	lyricsH     *LyricsHandler
+	artistMetaH *ArtistMetaHandler
+	subsonicH   *subsonic.SubsonicHandler
 	jwtManager  *auth.JWTManager
 }
 
@@ -46,6 +51,10 @@ func NewServer(
 	artworkService *service.ArtworkService,
 	annoService *service.AnnotationService,
 	playlistService *service.PlaylistService,
+	smartService *service.SmartPlaylistService,
+	lyricsService *service.LyricsService,
+	artistMetaService *service.ArtistMetaService,
+	subsonicHandler *subsonic.SubsonicHandler,
 ) *Server {
 	r := chi.NewRouter()
 
@@ -55,6 +64,7 @@ func NewServer(
 		router:     r,
 		healthH:    NewHealthHandler(cfg, dbChecker),
 		jwtManager: jwtManager,
+		subsonicH:  subsonicHandler,
 	}
 
 	if authService != nil {
@@ -75,6 +85,15 @@ func NewServer(
 	}
 	if playlistService != nil {
 		s.playlistH = NewPlaylistHandler(playlistService)
+	}
+	if smartService != nil {
+		s.smartH = NewSmartPlaylistHandler(smartService)
+	}
+	if lyricsService != nil {
+		s.lyricsH = NewLyricsHandler(lyricsService)
+	}
+	if artistMetaService != nil {
+		s.artistMetaH = NewArtistMetaHandler(artistMetaService)
 	}
 
 	s.setupMiddlewares()
@@ -102,6 +121,11 @@ func (s *Server) setupMiddlewares() {
 }
 
 func (s *Server) setupRoutes() {
+	// Mount OpenSubsonic / Subsonic API endpoints
+	if s.subsonicH != nil {
+		s.router.Mount("/rest", s.subsonicH.Routes())
+	}
+
 	// Base API router
 	s.router.Route("/api/v1", func(r chi.Router) {
 		// Health & Diagnostics
@@ -121,11 +145,29 @@ func (s *Server) setupRoutes() {
 			r.Mount("/artwork", s.artworkH.Routes())
 		}
 
+		// Lyrics Endpoints (Public/Protected)
+		if s.lyricsH != nil {
+			r.Mount("/lyrics", s.lyricsH.Routes())
+		}
+
+		// Artist Editorial Metadata
+		if s.artistMetaH != nil {
+			r.Mount("/artists", s.artistMetaH.Routes())
+		}
+
 		// Catalog Endpoints (Protected)
 		if s.catalogH != nil {
 			r.Group(func(cr chi.Router) {
 				cr.Use(RequireAuth)
 				cr.Mount("/", s.catalogH.Routes())
+			})
+		}
+
+		// Smart Playlists
+		if s.smartH != nil {
+			r.Group(func(sr chi.Router) {
+				sr.Use(RequireAuth)
+				sr.Mount("/smart-playlists", s.smartH.Routes())
 			})
 		}
 
@@ -165,7 +207,7 @@ func (s *Server) setupRoutes() {
 	// Serve Embedded React Web Application for all non-API paths
 	spaHandler := web.SPAHandler()
 	s.router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api") {
+		if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/rest") {
 			RespondError(w, r, domain.ErrNotFound("Route", r.URL.Path))
 			return
 		}

@@ -1,4 +1,4 @@
-﻿export interface User {
+export interface User {
   id: string
   username: string
   email?: string
@@ -164,4 +164,32 @@ export interface Diagnostics {
     config_dir: string
     music_dir: string
   }
+}
+
+export interface LyricLine {
+  time: number
+  text: string
+}
+
+export interface LyricsResult {
+  trackId: string
+  isSynced: boolean
+  lines: LyricLine[]
+  plainLyrics?: string
+  source: string
+}
+
+export interface SmartPlaylistSummary {
+  id: string
+  name: string
+  description: string
+  icon: string
+}
+
+export interface ArtistBiography {
+  artistId: string
+  name: string
+  biography: string
+  imageUrl?: string
+  source: string
 }

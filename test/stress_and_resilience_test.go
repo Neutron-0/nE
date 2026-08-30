@@ -1,4 +1,4 @@
-﻿package test_test
+package test_test
 
 import (
 	"bytes"
@@ -80,6 +80,10 @@ func setupStressEnvironment(t *testing.T) (
 		artService,
 		annoService,
 		plService,
+		nil,
+		nil,
+		nil,
+		nil,
 	)
 
 	// Create Admin User
