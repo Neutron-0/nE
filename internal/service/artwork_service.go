@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"bytes"
@@ -32,6 +32,7 @@ func NewArtworkService(catalogRepo *repository.CatalogRepository, cacheDir strin
 // ServeArtwork streams artwork for a given album or track with ETag caching.
 func (s *ArtworkService) ServeArtwork(ctx context.Context, w http.ResponseWriter, r *http.Request, itemType, itemID string, size int) error {
 	var filePath string
+	var searchArtist, searchTitle string
 
 	switch itemType {
 	case "track":
@@ -40,21 +41,31 @@ func (s *ArtworkService) ServeArtwork(ctx context.Context, w http.ResponseWriter
 			return err
 		}
 		filePath = track.Path
+		searchArtist = track.RawArtist
+		searchTitle = track.Title
 	case "album":
 		tracks, err := s.catalogRepo.ListTracksByAlbum(ctx, itemID)
 		if err != nil || len(tracks) == 0 {
 			return domain.ErrNotFound("Album artwork", itemID)
 		}
 		filePath = tracks[0].Path
+		searchArtist = tracks[0].RawArtist
+		searchTitle = tracks[0].AlbumTitle
 	default:
 		return domain.ErrInvalidInput("Invalid artwork item type")
 	}
 
-	// Try extracting artwork
+	// 1. Try extracting local artwork
 	art, err := media.ExtractArtwork(filePath)
 	if err != nil {
-		// Serve SVG fallback placeholder
-		return s.servePlaceholderSVG(w, r)
+		// 2. Fallback: Query online cover art provider (iTunes API)
+		if onlineArt, onErr := media.FetchOnlineArtwork(searchArtist, searchTitle); onErr == nil {
+			art = onlineArt
+			cacheFile := filepath.Join(s.cacheDir, art.Fingerprint+".jpg")
+			_ = os.WriteFile(cacheFile, art.Data, 0644)
+		} else {
+			return s.servePlaceholderSVG(w, r)
+		}
 	}
 
 	etag := fmt.Sprintf(`"%s"`, art.Fingerprint)

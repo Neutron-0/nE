@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"ne/internal/domain"
 )
 
@@ -19,6 +20,9 @@ func NewUserRepository(db *DB) *UserRepository {
 }
 
 func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
+	if u.ID == "" {
+		u.ID = uuid.NewString()
+	}
 	query := `INSERT INTO users (id, username, email, password_hash, is_admin, can_transcode, token_version, subsonic_salt, subsonic_token, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	now := time.Now().UTC()

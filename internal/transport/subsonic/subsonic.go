@@ -57,6 +57,38 @@ type Response struct {
 	Album        *AlbumDetail  `xml:"album,omitempty" json:"album,omitempty"`
 	Song         *Child        `xml:"song,omitempty" json:"song,omitempty"`
 	SearchResult *SearchResult `xml:"searchResult3,omitempty" json:"searchResult3,omitempty"`
+	AlbumList    *AlbumList    `xml:"albumList,omitempty" json:"albumList,omitempty"`
+	AlbumList2   *AlbumList    `xml:"albumList2,omitempty" json:"albumList2,omitempty"`
+	Playlists    *Playlists    `xml:"playlists,omitempty" json:"playlists,omitempty"`
+	Genres       *Genres       `xml:"genres,omitempty" json:"genres,omitempty"`
+}
+
+type AlbumList struct {
+	Album []Album `xml:"album" json:"album"`
+}
+
+type Playlists struct {
+	Playlist []Playlist `xml:"playlist" json:"playlist"`
+}
+
+type Playlist struct {
+	ID        string `xml:"id,attr" json:"id"`
+	Name      string `xml:"name,attr" json:"name"`
+	Comment   string `xml:"comment,attr,omitempty" json:"comment,omitempty"`
+	SongCount int    `xml:"songCount,attr" json:"songCount"`
+	Duration  int    `xml:"duration,attr" json:"duration"`
+	Public    bool   `xml:"public,attr" json:"public"`
+	Owner     string `xml:"owner,attr" json:"owner"`
+}
+
+type Genres struct {
+	Genre []Genre `xml:"genre" json:"genre"`
+}
+
+type Genre struct {
+	Value      string `xml:",chardata" json:"value"`
+	SongCount  int    `xml:"songCount,attr" json:"songCount"`
+	AlbumCount int    `xml:"albumCount,attr" json:"albumCount"`
 }
 
 type Error struct {
@@ -155,6 +187,7 @@ func (h *SubsonicHandler) Routes() chi.Router {
 		"ping", "getLicense", "getMusicFolders", "getArtists", "getIndexes",
 		"getArtist", "getAlbum", "getSong", "stream", "getCoverArt",
 		"search3", "star", "unstar", "scrobble",
+		"getAlbumList", "getAlbumList2", "getPlaylists", "getGenres",
 	}
 
 	for _, ep := range endpoints {
@@ -186,6 +219,12 @@ func (h *SubsonicHandler) dispatch(action string) http.HandlerFunc {
 			h.getArtist(w, r)
 		case "getAlbum":
 			h.getAlbum(w, r)
+		case "getAlbumList", "getAlbumList2":
+			h.getAlbumList2(w, r)
+		case "getPlaylists":
+			h.getPlaylists(w, r)
+		case "getGenres":
+			h.getGenres(w, r)
 		case "getSong":
 			h.getSong(w, r)
 		case "stream":
@@ -406,6 +445,73 @@ func (h *SubsonicHandler) getSong(w http.ResponseWriter, r *http.Request) {
 			BitRate:     t.BitRate,
 			Path:        t.Path,
 		},
+	})
+}
+
+func (h *SubsonicHandler) getAlbumList2(w http.ResponseWriter, r *http.Request) {
+	size := 50
+	if s := r.URL.Query().Get("size"); s != "" {
+		if val, err := strconv.Atoi(s); err == nil && val > 0 {
+			size = val
+		}
+	}
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if val, err := strconv.Atoi(o); err == nil && val >= 0 {
+			offset = val
+		}
+	}
+
+	albums, _, err := h.catalogService.ListAlbums(r.Context(), size, offset)
+	if err != nil {
+		h.respondError(w, r, 0, err.Error())
+		return
+	}
+
+	var resAlbums []Album
+	for _, alb := range albums {
+		resAlbums = append(resAlbums, Album{
+			ID:        alb.ID,
+			Name:      alb.Title,
+			Artist:    alb.AlbumArtist,
+			ArtistID:  alb.AlbumArtistID,
+			CoverArt:  "al-" + alb.ID,
+			SongCount: alb.TrackCount,
+			Duration:  int(alb.Duration),
+			Year:      alb.Year,
+		})
+	}
+
+	h.respondOK(w, r, &Response{
+		AlbumList2: &AlbumList{Album: resAlbums},
+		AlbumList:  &AlbumList{Album: resAlbums},
+	})
+}
+
+func (h *SubsonicHandler) getGenres(w http.ResponseWriter, r *http.Request) {
+	genres, err := h.catalogService.ListGenres(r.Context())
+	if err != nil {
+		h.respondError(w, r, 0, err.Error())
+		return
+	}
+
+	var resGenres []Genre
+	for _, g := range genres {
+		resGenres = append(resGenres, Genre{
+			Value:      g.Name,
+			SongCount:  g.TrackCount,
+			AlbumCount: g.AlbumCount,
+		})
+	}
+
+	h.respondOK(w, r, &Response{
+		Genres: &Genres{Genre: resGenres},
+	})
+}
+
+func (h *SubsonicHandler) getPlaylists(w http.ResponseWriter, r *http.Request) {
+	h.respondOK(w, r, &Response{
+		Playlists: &Playlists{Playlist: []Playlist{}},
 	})
 }
 

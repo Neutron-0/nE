@@ -189,6 +189,10 @@ func runServer() {
 				}
 			}
 		}
+
+		// Continuous Library Watcher (periodically inspects libraries for new/changed files)
+		watcher := scanner.NewLibraryWatcher(catalogService, 20*time.Second, logger)
+		watcher.Start(bgCtx)
 	}()
 
 	// Context for graceful shutdown

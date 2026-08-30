@@ -1,4 +1,4 @@
-﻿package subsonic_test
+package subsonic_test
 
 import (
 	"context"
@@ -113,6 +113,63 @@ func TestSubsonicEndpoints(t *testing.T) {
 
 		if subRes.MusicFolders == nil || len(subRes.MusicFolders.Folder) == 0 {
 			t.Errorf("expected music folders list, got %+v", subRes.MusicFolders)
+		}
+	})
+
+	// 5. Test getAlbumList2.view
+	t.Run("GetAlbumList2", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/getAlbumList2.view?u=neo&p=neo03&v=1.16.1&c=test&f=json&type=newest", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d", rec.Code)
+		}
+
+		var res map[string]subsonic.Response
+		_ = json.NewDecoder(rec.Body).Decode(&res)
+		subRes := res["subsonic-response"]
+
+		if subRes.Status != "ok" || subRes.AlbumList2 == nil {
+			t.Errorf("expected valid albumList2 response, got %+v", subRes)
+		}
+	})
+
+	// 6. Test getGenres.view
+	t.Run("GetGenres", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/getGenres.view?u=neo&p=neo03&v=1.16.1&c=test&f=json", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d", rec.Code)
+		}
+
+		var res map[string]subsonic.Response
+		_ = json.NewDecoder(rec.Body).Decode(&res)
+		subRes := res["subsonic-response"]
+
+		if subRes.Status != "ok" || subRes.Genres == nil {
+			t.Errorf("expected valid genres response, got %+v", subRes)
+		}
+	})
+
+	// 7. Test getPlaylists.view
+	t.Run("GetPlaylists", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/getPlaylists.view?u=neo&p=neo03&v=1.16.1&c=test&f=json", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d", rec.Code)
+		}
+
+		var res map[string]subsonic.Response
+		_ = json.NewDecoder(rec.Body).Decode(&res)
+		subRes := res["subsonic-response"]
+
+		if subRes.Status != "ok" || subRes.Playlists == nil {
+			t.Errorf("expected valid playlists response, got %+v", subRes)
 		}
 	})
 }

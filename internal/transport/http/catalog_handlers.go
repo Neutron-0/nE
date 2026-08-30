@@ -1,4 +1,4 @@
-﻿package http
+package http
 
 import (
 	"net/http"
@@ -10,11 +10,15 @@ import (
 )
 
 type CatalogHandler struct {
-	catalogService *service.CatalogService
+	catalogService    *service.CatalogService
+	artistMetaService *service.ArtistMetaService
 }
 
-func NewCatalogHandler(catalogService *service.CatalogService) *CatalogHandler {
-	return &CatalogHandler{catalogService: catalogService}
+func NewCatalogHandler(catalogService *service.CatalogService, artistMetaService *service.ArtistMetaService) *CatalogHandler {
+	return &CatalogHandler{
+		catalogService:    catalogService,
+		artistMetaService: artistMetaService,
+	}
 }
 
 func (h *CatalogHandler) Routes() chi.Router {
@@ -22,6 +26,7 @@ func (h *CatalogHandler) Routes() chi.Router {
 
 	r.Get("/artists", h.ListArtists)
 	r.Get("/artists/{id}", h.GetArtist)
+	r.Get("/artists/{id}/biography", h.GetArtistBiography)
 	r.Get("/albums", h.ListAlbums)
 	r.Get("/albums/{id}", h.GetAlbum)
 	r.Get("/tracks", h.ListTracks)
@@ -75,6 +80,24 @@ func (h *CatalogHandler) GetArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	JSON(w, http.StatusOK, artist)
+}
+
+func (h *CatalogHandler) GetArtistBiography(w http.ResponseWriter, r *http.Request) {
+	if h.artistMetaService == nil {
+		RespondError(w, r, domain.ErrNotFound("Biography service", "disabled"))
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		RespondError(w, r, domain.ErrInvalidInput("artistId is required"))
+		return
+	}
+	bio, err := h.artistMetaService.GetArtistBiography(r.Context(), id)
+	if err != nil {
+		RespondError(w, r, err)
+		return
+	}
+	JSON(w, http.StatusOK, bio)
 }
 
 func (h *CatalogHandler) ListAlbums(w http.ResponseWriter, r *http.Request) {

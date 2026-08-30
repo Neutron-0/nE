@@ -1,4 +1,4 @@
-﻿package http
+package http
 
 import (
 	"context"
@@ -71,7 +71,7 @@ func NewServer(
 		s.authH = NewAuthHandler(authService)
 	}
 	if catalogService != nil {
-		s.catalogH = NewCatalogHandler(catalogService)
+		s.catalogH = NewCatalogHandler(catalogService, artistMetaService)
 		s.adminH = NewAdminHandler(catalogService)
 	}
 	if streamService != nil {
@@ -148,11 +148,6 @@ func (s *Server) setupRoutes() {
 		// Lyrics Endpoints (Public/Protected)
 		if s.lyricsH != nil {
 			r.Mount("/lyrics", s.lyricsH.Routes())
-		}
-
-		// Artist Editorial Metadata
-		if s.artistMetaH != nil {
-			r.Mount("/artists", s.artistMetaH.Routes())
 		}
 
 		// Catalog Endpoints (Protected)

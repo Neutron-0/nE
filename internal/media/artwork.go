@@ -1,16 +1,22 @@
-﻿package media
+package media
 
 import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
 )
@@ -88,4 +94,51 @@ func GetImageDimensions(data []byte) (int, int) {
 		return 0, 0
 	}
 	return cfg.Width, cfg.Height
+}
+
+// FetchOnlineArtwork queries public metadata services to find cover art for tracks without embedded artwork.
+func FetchOnlineArtwork(artist, title string) (*ExtractedArtwork, error) {
+	cleanArtist := strings.TrimSpace(artist)
+	cleanTitle := strings.TrimSpace(title)
+	if cleanArtist == "" && cleanTitle == "" {
+		return nil, errors.New("insufficient metadata for online artwork search")
+	}
+
+	term := url.QueryEscape(fmt.Sprintf("%s %s", cleanArtist, cleanTitle))
+	reqURL := fmt.Sprintf("https://itunes.apple.com/search?term=%s&entity=song&limit=1", term)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(reqURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var itunesRes struct {
+		ResultCount int `json:"resultCount"`
+		Results     []struct {
+			ArtworkUrl100 string `json:"artworkUrl100"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&itunesRes); err != nil || itunesRes.ResultCount == 0 {
+		return nil, errors.New("no online artwork found")
+	}
+
+	hiresURL := strings.Replace(itunesRes.Results[0].ArtworkUrl100, "100x100bb.jpg", "600x600bb.jpg", 1)
+	imgResp, err := client.Get(hiresURL)
+	if err != nil {
+		return nil, err
+	}
+	defer imgResp.Body.Close()
+
+	data, err := io.ReadAll(imgResp.Body)
+	if err != nil || len(data) == 0 {
+		return nil, errors.New("failed reading online image data")
+	}
+
+	hash := sha256.Sum256(data)
+	return &ExtractedArtwork{
+		Data:        data,
+		MimeType:    "image/jpeg",
+		Fingerprint: hex.EncodeToString(hash[:]),
+	}, nil
 }

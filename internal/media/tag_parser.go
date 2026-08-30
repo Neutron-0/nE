@@ -1,4 +1,4 @@
-﻿package media
+package media
 
 import (
 	"fmt"
@@ -179,45 +179,84 @@ func ParseAudioFile(path string) (*AudioMetadata, error) {
 func applyFallbacks(meta *AudioMetadata, path string) {
 	filename := filepath.Base(path)
 	filenameNoExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+	cleanName := filenameNoExt
 
-	// If title is missing, infer from filename
-	if meta.Title == "" {
-		matches := trackNumRegex.FindStringSubmatch(filenameNoExt)
+	// 1. Pattern matching for Title and Artist from filename (e.g. "Moonlight - Kali Uchis")
+	if strings.Contains(cleanName, " - ") {
+		parts := strings.Split(cleanName, " - ")
+		if len(parts) == 2 {
+			p0 := strings.TrimSpace(parts[0])
+			p1 := strings.TrimSpace(parts[1])
+
+			if matches := trackNumRegex.FindStringSubmatch(p0); len(matches) == 3 {
+				if num, err := strconv.Atoi(matches[1]); err == nil && meta.TrackNumber <= 1 {
+					meta.TrackNumber = num
+				}
+				p0 = strings.TrimSpace(matches[2])
+			}
+
+			if meta.Title == "" || meta.Title == filenameNoExt {
+				meta.Title = p0
+			}
+			if meta.Artist == "" || meta.Artist == "music" {
+				meta.Artist = p1
+			}
+		} else if len(parts) >= 3 {
+			if num, err := strconv.Atoi(strings.TrimSpace(parts[0])); err == nil && meta.TrackNumber <= 1 {
+				meta.TrackNumber = num
+			}
+			if meta.Artist == "" || meta.Artist == "music" {
+				meta.Artist = strings.TrimSpace(parts[1])
+			}
+			if meta.Title == "" || meta.Title == filenameNoExt {
+				meta.Title = strings.TrimSpace(parts[2])
+			}
+		}
+	} else if meta.Title == "" {
+		matches := trackNumRegex.FindStringSubmatch(cleanName)
 		if len(matches) == 3 {
 			if num, err := strconv.Atoi(matches[1]); err == nil && meta.TrackNumber <= 1 {
 				meta.TrackNumber = num
 			}
 			meta.Title = strings.TrimSpace(matches[2])
 		} else {
-			meta.Title = filenameNoExt
+			meta.Title = cleanName
 		}
 	}
 
-	// If artist is missing, infer from parent or grandparent folder
+	// 2. Filter out generic root folder names
 	dir := filepath.Dir(path)
 	parentDir := filepath.Base(dir)
 	grandparentDir := filepath.Base(filepath.Dir(dir))
 
-	if meta.Artist == "" {
-		if parentDir != "" && parentDir != "." && parentDir != "/" && parentDir != "\\" {
+	isRootMusicDir := func(d string) bool {
+		lower := strings.ToLower(strings.TrimSpace(d))
+		return lower == "music" || lower == "musicdir" || lower == "." || lower == "/" || lower == "\\" || lower == "app" || lower == "songs" || lower == "mp3"
+	}
+
+	if meta.Artist == "" || isRootMusicDir(meta.Artist) {
+		if !isRootMusicDir(parentDir) {
 			meta.Artist = parentDir
+		} else if !isRootMusicDir(grandparentDir) {
+			meta.Artist = grandparentDir
 		} else {
 			meta.Artist = "Unknown Artist"
 		}
 	}
 
-	if meta.Album == "" {
-		if parentDir != "" && parentDir != "." && parentDir != "/" && parentDir != "\\" {
+	// 3. Album fallback
+	if meta.Album == "" || isRootMusicDir(meta.Album) {
+		if !isRootMusicDir(parentDir) {
 			meta.Album = parentDir
-			if grandparentDir != "" && grandparentDir != "." && grandparentDir != "/" && grandparentDir != "\\" {
+			if !isRootMusicDir(grandparentDir) && (meta.Artist == "" || isRootMusicDir(meta.Artist)) {
 				meta.Artist = grandparentDir
 			}
 		} else {
-			meta.Album = "Unknown Album"
+			meta.Album = "Singles"
 		}
 	}
 
-	if meta.AlbumArtist == "" {
+	if meta.AlbumArtist == "" || isRootMusicDir(meta.AlbumArtist) {
 		meta.AlbumArtist = meta.Artist
 	}
 }
