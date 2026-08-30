@@ -1,4 +1,4 @@
-﻿package config
+package config
 
 import (
 	"fmt"
@@ -188,8 +188,12 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("NE_HOST"); v != "" {
 		cfg.Server.Host = v
 	}
-	if v := os.Getenv("NE_PORT"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil {
+	portEnv := os.Getenv("NE_PORT")
+	if portEnv == "" {
+		portEnv = os.Getenv("PORT")
+	}
+	if portEnv != "" {
+		if p, err := strconv.Atoi(portEnv); err == nil {
 			cfg.Server.Port = p
 		}
 	}

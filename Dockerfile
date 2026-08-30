@@ -1,4 +1,4 @@
-﻿# Multi-Stage Dockerfile for nE Autonomous Personal Music Server
+# Multi-Stage Dockerfile for nE Autonomous Personal Music Server
 
 # Stage 1: Build React 19 Frontend
 FROM node:22-alpine AS frontend-builder
@@ -9,8 +9,9 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: Build Standalone Go Binary
-FROM golang:1.24-alpine AS backend-builder
+FROM golang:alpine AS backend-builder
 WORKDIR /app
+ENV GOTOOLCHAIN=auto
 RUN apk add --no-cache git gcc musl-dev
 COPY go.mod go.sum ./
 RUN go mod download
