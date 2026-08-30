@@ -41,17 +41,17 @@ export const HistoryView: React.FC = () => {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-5 pb-6 border-b border-white/5">
-        <div className="w-16 h-16 rounded-[22px] bg-[#221f1c] border border-white/10 flex items-center justify-center text-amber-500 shadow-xl">
+      {/* Header with Liquid Glass */}
+      <div className="flex items-center gap-5 pb-6 border-b border-white/[0.06]">
+        <div className="w-16 h-16 rounded-[22px] liquid-glass flex items-center justify-center text-white shadow-xl">
           <History className="w-8 h-8" />
         </div>
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 font-hud">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 font-hud">
             TELEMETRY LOG
           </span>
           <h2 className="text-3xl font-black text-white tracking-tight mt-0.5">Listening History</h2>
-          <p className="text-xs text-zinc-400 mt-1 font-hud">{history.length} logged sessions</p>
+          <p className="text-xs text-zinc-500 mt-1 font-hud">{history.length} logged sessions</p>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export const HistoryView: React.FC = () => {
         </div>
       ) : history.length === 0 ? (
         <div className="py-16 text-center text-zinc-500">
-          <History className="w-12 h-12 mx-auto mb-3 text-zinc-700 stroke-1" />
+          <History className="w-12 h-12 mx-auto mb-3 text-zinc-800 stroke-1" />
           <h3 className="text-lg font-bold text-zinc-400">No playback history</h3>
           <p className="text-xs text-zinc-600 mt-1">Tracks you play will be recorded here</p>
         </div>
@@ -71,10 +71,10 @@ export const HistoryView: React.FC = () => {
             <div
               key={item.id}
               onClick={() => handlePlay(item)}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-[#211e1c] hover:bg-[#2b2724] border border-white/5 hover:border-white/15 cursor-pointer transition-all group shadow-sm hover:shadow-lg"
+              className="flex items-center justify-between p-3.5 rounded-2xl liquid-glass-card cursor-pointer transition-all group"
             >
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-[#171514] border border-white/5 flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors shrink-0">
+                <div className="w-10 h-10 rounded-xl liquid-glass flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors shrink-0">
                   <Play className="w-4 h-4 fill-current hidden group-hover:inline-block ml-0.5" />
                   <Music className="w-4 h-4 group-hover:hidden" />
                 </div>
@@ -86,9 +86,9 @@ export const HistoryView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-xs font-hud text-zinc-400 shrink-0">
+              <div className="flex items-center gap-4 text-xs font-hud text-zinc-500 shrink-0">
                 {item.completed && (
-                  <span className="flex items-center gap-1 text-emerald-400 text-[11px]">
+                  <span className="flex items-center gap-1 text-white text-[11px] font-bold">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Scrobbled
                   </span>
                 )}

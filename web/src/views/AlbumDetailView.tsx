@@ -37,12 +37,12 @@ export const AlbumDetailView: React.FC<AlbumDetailViewProps> = ({ album, onBack 
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-white/5"
+        className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer px-3 py-1.5 rounded-xl liquid-glass-pill"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Albums
       </button>
 
-      {/* Hero Showcase Card matching Image 2 */}
+      {/* Hero Showcase Card with Liquid Glass */}
       <HeroAlbumCard album={album} tracks={tracks} />
 
       {/* Tracklist matching Image 2 */}

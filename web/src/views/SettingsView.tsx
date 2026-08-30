@@ -72,20 +72,20 @@ export const SettingsView: React.FC = () => {
   return (
     <div className="p-6 md:p-8 max-w-4xl space-y-8 select-none">
       <div>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400 font-hud">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 font-hud">
           SYSTEM // TELEMETRY
         </span>
         <h2 className="text-3xl font-black text-white tracking-tight mt-0.5">
           Settings & Administration
         </h2>
-        <p className="text-xs text-zinc-400 mt-1">
-          Manage music directories, scan libraries, and inspect server health
+        <p className="text-xs text-zinc-500 mt-1 font-hud">
+          SOLID BLACK • LIQUID GLASS CONSOLE
         </p>
       </div>
 
       {message && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-3 text-xs text-emerald-400 font-medium">
-          <Check className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl liquid-glass border-white/20 flex items-center gap-3 text-xs text-white font-medium">
+          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{message}</span>
         </div>
       )}
@@ -97,10 +97,10 @@ export const SettingsView: React.FC = () => {
         </div>
       )}
 
-      {/* Libraries Section */}
-      <div className="bg-[#211e1c] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-6">
+      {/* Libraries Section with Liquid Glass */}
+      <div className="liquid-glass rounded-[24px] p-6 shadow-xl space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#171514] border border-white/5 flex items-center justify-center text-rose-400">
+          <div className="w-9 h-9 rounded-xl liquid-glass flex items-center justify-center text-white">
             <HardDrive className="w-4 h-4" />
           </div>
           <h3 className="text-lg font-bold text-white tracking-tight">Audio Libraries</h3>
@@ -108,12 +108,12 @@ export const SettingsView: React.FC = () => {
 
         <div className="space-y-3">
           {libraries.length === 0 ? (
-            <p className="text-xs text-zinc-500 font-hud">NO MUSIC LIBRARIES CONFIGURED YET.</p>
+            <p className="text-xs text-zinc-600 font-hud">NO MUSIC LIBRARIES CONFIGURED YET.</p>
           ) : (
             libraries.map((lib) => (
               <div
                 key={lib.id}
-                className="bg-[#171514] border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-4"
+                className="liquid-glass-card rounded-2xl p-4 flex items-center justify-between gap-4"
               >
                 <div>
                   <h4 className="font-bold text-sm text-white">{lib.name}</h4>
@@ -131,10 +131,10 @@ export const SettingsView: React.FC = () => {
                   <button
                     onClick={() => handleTriggerScan(lib.id)}
                     disabled={scanningMap[lib.id]}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2a2622] hover:bg-[#35302b] text-xs font-bold text-white transition-all disabled:opacity-50 cursor-pointer border border-white/5"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl liquid-glass-pill text-xs font-bold text-white transition-all disabled:opacity-50 cursor-pointer hover:bg-white/[0.1]"
                   >
                     <RefreshCw
-                      className={`w-3.5 h-3.5 ${scanningMap[lib.id] ? 'animate-spin text-rose-400' : ''}`}
+                      className={`w-3.5 h-3.5 ${scanningMap[lib.id] ? 'animate-spin text-white' : ''}`}
                     />
                     {scanningMap[lib.id] ? 'Scanning...' : 'Scan Now'}
                   </button>
@@ -145,14 +145,14 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {user?.isAdmin && (
-          <form onSubmit={handleAddLibrary} className="border-t border-white/5 pt-6 space-y-4">
-            <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider font-hud flex items-center gap-2">
-              <FolderPlus className="w-4 h-4 text-amber-400" /> ADD AUDIO DIRECTORY
+          <form onSubmit={handleAddLibrary} className="border-t border-white/[0.06] pt-6 space-y-4">
+            <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-widest font-hud flex items-center gap-2">
+              <FolderPlus className="w-4 h-4 text-white" /> ADD AUDIO DIRECTORY
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-hud">
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 font-hud">
                   Library Name
                 </label>
                 <input
@@ -161,12 +161,12 @@ export const SettingsView: React.FC = () => {
                   placeholder="e.g. Master Library"
                   value={newLibName}
                   onChange={(e) => setNewLibName(e.target.value)}
-                  className="w-full bg-[#141211] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  className="w-full liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-hud">
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 font-hud">
                   Directory Path
                 </label>
                 <input
@@ -175,7 +175,7 @@ export const SettingsView: React.FC = () => {
                   placeholder="e.g. /music or D:\Music"
                   value={newLibPath}
                   onChange={(e) => setNewLibPath(e.target.value)}
-                  className="w-full bg-[#141211] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white font-hud placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  className="w-full liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm text-white font-hud placeholder-zinc-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -191,39 +191,39 @@ export const SettingsView: React.FC = () => {
         )}
       </div>
 
-      {/* System Diagnostics Section */}
+      {/* System Diagnostics Section with Liquid Glass */}
       {diagnostics && (
-        <div className="bg-[#211e1c] border border-white/5 rounded-[24px] p-6 shadow-xl">
+        <div className="liquid-glass rounded-[24px] p-6 shadow-xl">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-[#171514] border border-white/5 flex items-center justify-center text-amber-400">
+            <div className="w-9 h-9 rounded-xl liquid-glass flex items-center justify-center text-white">
               <Server className="w-4 h-4" />
             </div>
             <h3 className="text-lg font-bold text-white tracking-tight">System Diagnostics</h3>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-hud">
-            <div className="bg-[#171514] border border-white/5 rounded-2xl p-4">
-              <span className="text-zinc-500 block mb-1 text-[10px] tracking-wider uppercase">Runtime</span>
+            <div className="liquid-glass-card rounded-2xl p-4">
+              <span className="text-zinc-500 block mb-1 text-[10px] tracking-widest uppercase">Runtime</span>
               <span className="text-white font-bold">{diagnostics.go_version}</span>
             </div>
 
-            <div className="bg-[#171514] border border-white/5 rounded-2xl p-4">
-              <span className="text-zinc-500 block mb-1 text-[10px] tracking-wider uppercase">Platform</span>
+            <div className="liquid-glass-card rounded-2xl p-4">
+              <span className="text-zinc-500 block mb-1 text-[10px] tracking-widest uppercase">Platform</span>
               <span className="text-white font-bold">{diagnostics.platform}</span>
             </div>
 
-            <div className="bg-[#171514] border border-white/5 rounded-2xl p-4">
-              <span className="text-zinc-500 block mb-1 text-[10px] tracking-wider uppercase">Uptime</span>
+            <div className="liquid-glass-card rounded-2xl p-4">
+              <span className="text-zinc-500 block mb-1 text-[10px] tracking-widest uppercase">Uptime</span>
               <span className="text-white font-bold">{diagnostics.uptime_seconds}s</span>
             </div>
 
-            <div className="bg-[#171514] border border-white/5 rounded-2xl p-4">
-              <span className="text-zinc-500 block mb-1 text-[10px] tracking-wider uppercase">Transcoder</span>
+            <div className="liquid-glass-card rounded-2xl p-4">
+              <span className="text-zinc-500 block mb-1 text-[10px] tracking-widest uppercase">Transcoder</span>
               <span
                 className={
                   diagnostics.ffmpeg.available
-                    ? 'text-emerald-400 font-bold'
-                    : 'text-amber-400 font-bold'
+                    ? 'text-white font-bold'
+                    : 'text-zinc-400 font-bold'
                 }
               >
                 {diagnostics.ffmpeg.available ? 'FFmpeg Active' : 'Direct Play'}

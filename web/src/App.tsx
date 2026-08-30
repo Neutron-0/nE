@@ -33,12 +33,12 @@ export const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#121110] flex flex-col items-center justify-center text-white font-hud">
-        <div className="w-16 h-16 rounded-2xl bg-[#23201d] border border-white/10 flex items-center justify-center shadow-2xl animate-pulse mb-4">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white font-hud">
+        <div className="w-16 h-16 rounded-2xl liquid-glass flex items-center justify-center shadow-2xl animate-pulse mb-4">
           <span className="font-black text-2xl text-white">nE</span>
         </div>
         <p className="text-xs font-semibold tracking-widest text-zinc-400 flex items-center gap-2">
-          ESTABLISHING NEURAL AUDIO LINK <Sparkles className="w-3.5 h-3.5 text-rose-500 animate-spin" />
+          ESTABLISHING NEURAL AUDIO LINK <Sparkles className="w-3.5 h-3.5 text-white animate-spin" />
         </p>
       </div>
     )
@@ -84,9 +84,9 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen bg-[#0e0d0c] p-2 md:p-3.5 flex items-center justify-center select-none overflow-hidden font-sans">
-      {/* Outer Floating Hardware Bezel matching Image 2 */}
-      <div className="w-full h-full bg-[#181615] rounded-[28px] md:rounded-[32px] border border-[#2f2b27] flex overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative">
+    <div className="h-screen w-screen bg-black p-2 md:p-3 flex items-center justify-center select-none overflow-hidden font-sans">
+      {/* Outer Floating Solid Black Console with Liquid Glass */}
+      <div className="w-full h-full bg-black/95 rounded-[28px] md:rounded-[32px] border border-white/[0.08] flex overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,1)] relative backdrop-blur-3xl">
         {/* Column 1: Left Navigation & Playlists matching Image 2 */}
         <Sidebar
           currentView={currentView}
@@ -97,7 +97,7 @@ export const App: React.FC = () => {
         />
 
         {/* Column 2: Center Main Content Stream matching Image 2 */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#1e1b19] overflow-hidden border-r border-[#2e2a26]">
+        <main className="flex-1 flex flex-col min-w-0 bg-[#060606]/80 backdrop-blur-2xl overflow-hidden border-r border-white/[0.06]">
           <Header
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}

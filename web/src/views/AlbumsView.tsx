@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { Disc } from 'lucide-react'
 import type { Album, Track } from '../types'
 import { api } from '../lib/api'
@@ -52,7 +52,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({ onSelectAlbum, searchQue
 
   return (
     <div className="p-6 md:p-8 space-y-8">
-      {/* 1. Hero Showcase Card matching Image 2 */}
+      {/* 1. Hero Showcase Card with Liquid Glass matching Image 2 */}
       {featuredAlbum && (
         <HeroAlbumCard
           album={featuredAlbum}
@@ -65,17 +65,17 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({ onSelectAlbum, searchQue
       <div>
         <div className="flex items-center justify-between mb-3 px-1">
           <h3 className="text-lg font-bold text-white tracking-tight">Songs</h3>
-          <span className="text-xs text-zinc-400 font-hud">{featuredTracks.length} tracks</span>
+          <span className="text-xs text-zinc-500 font-hud">{featuredTracks.length} tracks</span>
         </div>
         <TracklistTable tracks={featuredTracks} />
       </div>
 
-      {/* 3. Albums Grid */}
+      {/* 3. Albums Grid with Liquid Glass */}
       {filteredAlbums.length > 1 && (
-        <div className="pt-6 border-t border-white/5">
+        <div className="pt-6 border-t border-white/[0.06]">
           <div className="flex items-center justify-between mb-4 px-1">
             <h3 className="text-lg font-bold text-white tracking-tight">Albums</h3>
-            <span className="text-xs text-zinc-400 font-hud">{filteredAlbums.length} albums</span>
+            <span className="text-xs text-zinc-500 font-hud">{filteredAlbums.length} albums</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
@@ -83,9 +83,9 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({ onSelectAlbum, searchQue
               <div
                 key={album.id}
                 onClick={() => onSelectAlbum(album)}
-                className="group bg-[#211e1c] hover:bg-[#2a2623] border border-white/5 hover:border-white/15 rounded-2xl p-3.5 transition-all cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-1"
+                className="liquid-glass-card rounded-2xl p-3.5 cursor-pointer shadow-lg hover:-translate-y-1 group"
               >
-                <div className="relative aspect-square rounded-xl bg-[#171514] overflow-hidden mb-3 flex items-center justify-center border border-white/5">
+                <div className="relative aspect-square rounded-xl bg-black overflow-hidden mb-3 flex items-center justify-center border border-white/10">
                   <img
                     src={api.getArtworkUrl('album', album.id, 300)}
                     alt={album.title}
@@ -95,10 +95,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({ onSelectAlbum, searchQue
                     }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <Disc className="w-12 h-12 text-zinc-700 stroke-1 absolute -z-10" />
+                  <Disc className="w-12 h-12 text-zinc-800 stroke-1 absolute -z-10" />
                 </div>
 
-                <h4 className="font-bold text-sm text-zinc-100 truncate group-hover:text-white transition-colors">
+                <h4 className="font-bold text-sm text-white truncate group-hover:text-white transition-colors">
                   {album.title}
                 </h4>
                 <p className="text-xs text-zinc-400 truncate mt-0.5">{album.albumArtist}</p>

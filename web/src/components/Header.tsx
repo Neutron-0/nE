@@ -71,11 +71,11 @@ export const Header: React.FC<HeaderProps> = ({
   }
 
   return (
-    <header className="h-16 px-8 flex items-center justify-between gap-6 z-30 select-none">
-      {/* Pill Search Input matching Image 2 */}
+    <header className="h-16 px-8 flex items-center justify-between gap-6 z-30 select-none border-b border-white/[0.04]">
+      {/* Pill Search Input with Liquid Glass matching Image 2 */}
       <div ref={searchRef} className="relative max-w-md w-full">
         {isSearching ? (
-          <Loader2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-rose-400 animate-spin" />
+          <Loader2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-white animate-spin" />
         ) : (
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
         )}
@@ -87,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
             if (searchResults) setShowResults(true)
           }}
           placeholder="Search for songs, artists..."
-          className="w-full bg-[#24211e] border border-white/5 rounded-full pl-10 pr-8 py-2 text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-white/20 transition-all shadow-inner"
+          className="w-full liquid-glass-input rounded-full pl-10 pr-8 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none"
         />
         {searchQuery && (
           <button
@@ -96,18 +96,18 @@ export const Header: React.FC<HeaderProps> = ({
               setSearchResults(null)
               setShowResults(false)
             }}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {/* Live Search Results Dropdown */}
+        {/* Live Search Results Dropdown with Liquid Glass */}
         {showResults && searchResults && (
-          <div className="absolute left-0 right-0 top-full mt-2 bg-[#201d1b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl max-h-96 overflow-y-auto p-3 space-y-3 z-50">
+          <div className="absolute left-0 right-0 top-full mt-2 liquid-glass rounded-2xl max-h-96 overflow-y-auto p-3 space-y-3 z-50">
             {searchResults.tracks.length > 0 && (
               <div>
-                <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1 px-2 font-hud">
+                <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1 px-2 font-hud">
                   Tracks
                 </p>
                 <div className="space-y-0.5">
@@ -115,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({
                     <div
                       key={t.id}
                       onClick={() => handleTrackClick(t)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer text-xs group"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.06] cursor-pointer text-xs group"
                     >
-                      <Music className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <Music className="w-3.5 h-3.5 text-white shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-white truncate">{t.title}</p>
                         <p className="text-zinc-400 truncate text-[11px]">{t.rawArtist}</p>
@@ -130,7 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {searchResults.albums.length > 0 && (
               <div>
-                <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1 px-2 font-hud">
+                <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1 px-2 font-hud">
                   Albums
                 </p>
                 <div className="space-y-0.5">
@@ -138,9 +138,9 @@ export const Header: React.FC<HeaderProps> = ({
                     <div
                       key={a.id}
                       onClick={() => handleAlbumClick(a)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer text-xs group"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.06] cursor-pointer text-xs group"
                     >
-                      <Disc className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <Disc className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-white truncate">{a.title}</p>
                         <p className="text-zinc-400 truncate text-[11px]">{a.albumArtist}</p>
@@ -154,11 +154,11 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Right Icons Row matching Image 2: Bell, Settings, User Avatar */}
+      {/* Right Icons Row: Bell, Settings, User Avatar with Liquid Glass */}
       <div className="flex items-center gap-3">
         <button
           title="Notifications"
-          className="p-2 text-zinc-400 hover:text-white rounded-full bg-[#24211e] hover:bg-[#2e2a27] border border-white/5 transition-colors cursor-pointer"
+          className="p-2 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-all cursor-pointer"
         >
           <Bell className="w-4 h-4" />
         </button>
@@ -166,13 +166,13 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenSettings}
           title="Settings"
-          className="p-2 text-zinc-400 hover:text-white rounded-full bg-[#24211e] hover:bg-[#2e2a27] border border-white/5 transition-colors cursor-pointer"
+          className="p-2 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-all cursor-pointer"
         >
           <Settings className="w-4 h-4" />
         </button>
 
-        {/* User Avatar Circle Pill matching Image 2 */}
-        <div className="w-9 h-9 rounded-full bg-zinc-600 border border-white/10 flex items-center justify-center font-bold text-xs text-white shadow-inner cursor-pointer">
+        {/* User Avatar Circle Pill */}
+        <div className="w-9 h-9 rounded-full liquid-glass-pill flex items-center justify-center font-bold text-xs text-white cursor-pointer shadow-md">
           {user?.username.charAt(0).toUpperCase() || 'N'}
         </div>
       </div>

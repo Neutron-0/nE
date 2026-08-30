@@ -93,12 +93,12 @@ export const PlaylistsView: React.FC = () => {
 
   const getSmartIcon = (iconName: string) => {
     switch (iconName) {
-      case 'Clock': return <Clock className="w-5 h-5 text-amber-400" />
+      case 'Clock': return <Clock className="w-5 h-5 text-zinc-300" />
       case 'Flame': return <Flame className="w-5 h-5 text-rose-500" />
-      case 'History': return <HistoryIcon className="w-5 h-5 text-blue-400" />
-      case 'Star': return <Star className="w-5 h-5 text-yellow-400 fill-yellow-400/30" />
-      case 'Shuffle': return <Shuffle className="w-5 h-5 text-emerald-400" />
-      default: return <Sparkles className="w-5 h-5 text-rose-400" />
+      case 'History': return <HistoryIcon className="w-5 h-5 text-zinc-300" />
+      case 'Star': return <Star className="w-5 h-5 text-white" />
+      case 'Shuffle': return <Shuffle className="w-5 h-5 text-zinc-300" />
+      default: return <Sparkles className="w-5 h-5 text-white" />
     }
   }
 
@@ -115,7 +115,7 @@ export const PlaylistsView: React.FC = () => {
       {/* Smart Playlists Section */}
       <div>
         <div className="flex items-center gap-2 mb-4 px-1">
-          <Sparkles className="w-4 h-4 text-rose-400" />
+          <Sparkles className="w-4 h-4 text-white" />
           <h3 className="text-xl font-bold text-white tracking-tight">Dynamic Smart Mixes</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
@@ -123,14 +123,14 @@ export const PlaylistsView: React.FC = () => {
             <div
               key={sp.id}
               onClick={() => handleSelectSmartPlaylist(sp)}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
+              className={`p-4 rounded-2xl cursor-pointer flex flex-col justify-between group transition-all ${
                 selectedPlaylist?.id === sp.id
-                  ? 'bg-[#2f2a26] border-rose-500/50 shadow-lg'
-                  : 'bg-[#211e1c] hover:bg-[#2a2623] border-white/5 hover:border-white/15'
+                  ? 'liquid-glass-pill text-white shadow-xl'
+                  : 'liquid-glass-card'
               }`}
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-[#181615] flex items-center justify-center shrink-0 border border-white/5">
+                <div className="w-10 h-10 rounded-xl liquid-glass flex items-center justify-center shrink-0">
                   {getSmartIcon(sp.icon)}
                 </div>
                 <h4 className="font-bold text-sm text-white truncate">{sp.name}</h4>
@@ -146,7 +146,7 @@ export const PlaylistsView: React.FC = () => {
         <div className="flex items-center justify-between mb-4 px-1">
           <div>
             <h3 className="text-xl font-bold text-white tracking-tight">My Playlists</h3>
-            <p className="text-xs text-zinc-400 mt-0.5">Create and organize custom music sets</p>
+            <p className="text-xs text-zinc-500 mt-0.5">Create and organize custom music sets</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -159,7 +159,7 @@ export const PlaylistsView: React.FC = () => {
         {/* Playlist Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {playlists.length === 0 ? (
-            <div className="col-span-full py-8 text-center text-xs text-zinc-500 border border-dashed border-white/10 rounded-2xl font-hud">
+            <div className="col-span-full py-8 text-center text-xs text-zinc-600 border border-dashed border-white/10 rounded-2xl font-hud">
               NO CUSTOM PLAYLISTS CREATED YET. CLICK "+ NEW PLAYLIST" TO BEGIN.
             </div>
           ) : (
@@ -167,25 +167,25 @@ export const PlaylistsView: React.FC = () => {
               <div
                 key={pl.id}
                 onClick={() => handleSelectCustomPlaylist(pl)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+                className={`p-4 rounded-2xl cursor-pointer flex items-center justify-between group transition-all ${
                   selectedPlaylist?.id === pl.id
-                    ? 'bg-[#2f2a26] border-rose-500/50 shadow-lg'
-                    : 'bg-[#211e1c] hover:bg-[#2a2623] border-white/5 hover:border-white/15'
+                    ? 'liquid-glass-pill text-white shadow-xl'
+                    : 'liquid-glass-card'
                 }`}
               >
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-12 h-12 rounded-xl bg-[#181615] border border-white/5 flex items-center justify-center text-rose-400 shrink-0">
+                  <div className="w-12 h-12 rounded-xl liquid-glass flex items-center justify-center text-white shrink-0">
                     <ListMusic className="w-6 h-6" />
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-bold text-sm text-white truncate">{pl.name}</h4>
-                    <p className="text-xs text-zinc-400 mt-0.5 font-hud">{pl.trackCount} tracks</p>
+                    <p className="text-xs text-zinc-500 mt-0.5 font-hud">{pl.trackCount} tracks</p>
                   </div>
                 </div>
 
                 <button
                   onClick={(e) => handleDelete(e, pl.id)}
-                  className="p-2 text-zinc-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="p-2 text-zinc-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -197,7 +197,7 @@ export const PlaylistsView: React.FC = () => {
 
       {/* Selected Playlist Tracks Section */}
       {selectedPlaylist && (
-        <div className="bg-[#211e1c] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-4">
+        <div className="liquid-glass rounded-[24px] p-6 shadow-xl space-y-4">
           <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="text-2xl font-black text-white">{selectedPlaylist.name}</h3>
@@ -219,14 +219,14 @@ export const PlaylistsView: React.FC = () => {
         </div>
       )}
 
-      {/* Create Modal */}
+      {/* Create Modal with Liquid Glass */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-xl">
-          <div className="bg-[#1f1c1a] border border-white/10 rounded-[28px] p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-2xl">
+          <div className="liquid-glass rounded-[28px] p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-white mb-4">Create New Playlist</h3>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-hud">
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 font-hud">
                   Playlist Name
                 </label>
                 <input
@@ -235,12 +235,12 @@ export const PlaylistsView: React.FC = () => {
                   placeholder="e.g. Late Night Synthwave"
                   value={newPlaylistName}
                   onChange={(e) => setNewPlaylistName(e.target.value)}
-                  className="w-full bg-[#141211] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  className="w-full liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-hud">
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 font-hud">
                   Description (Optional)
                 </label>
                 <input
@@ -248,7 +248,7 @@ export const PlaylistsView: React.FC = () => {
                   placeholder="e.g. Chill tracks for focus"
                   value={newPlaylistComment}
                   onChange={(e) => setNewPlaylistComment(e.target.value)}
-                  className="w-full bg-[#141211] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                  className="w-full liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none"
                 />
               </div>
 

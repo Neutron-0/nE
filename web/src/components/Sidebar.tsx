@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { motion } from 'motion/react'
 import {
   Home,
@@ -29,14 +29,12 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
   const { user, logout } = useAuthStore()
 
-  // Primary navigation matching Image 2
   const menuItems = [
     { id: 'albums' as ViewType, label: 'Home', icon: Home },
     { id: 'tracks' as ViewType, label: 'Explore', icon: Compass },
     { id: 'artists' as ViewType, label: 'Library', icon: Library },
   ]
 
-  // Playlists matching Image 2
   const defaultPlaylists = [
     { name: 'After Hours Mix', id: 'playlists' },
     { name: 'Productivity Flows', id: 'playlists' },
@@ -45,24 +43,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
   ]
 
   return (
-    <aside className="w-56 md:w-60 bg-[#191716]/95 border-r border-[#302c28]/80 p-5 flex flex-col justify-between shrink-0 select-none h-full">
+    <aside className="w-56 md:w-60 bg-black/85 backdrop-blur-2xl border-r border-white/[0.06] p-5 flex flex-col justify-between shrink-0 select-none h-full">
       <div className="overflow-y-auto">
         {/* Brand Logo matching nE */}
         <div className="flex items-center gap-3 px-2 py-3 mb-6">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
-            <span className="font-black text-lg text-black font-hud">nE</span>
+          <div className="w-9 h-9 rounded-xl liquid-glass flex items-center justify-center shadow-lg shadow-white/5">
+            <span className="font-black text-lg text-white font-hud tracking-tighter">nE</span>
           </div>
           <div>
             <h1 className="font-extrabold text-base tracking-tight text-white leading-none">
               nE Audio
             </h1>
-            <span className="text-[11px] text-zinc-400 font-medium">Personal Streamer</span>
+            <span className="text-[11px] text-zinc-500 font-medium tracking-wide">Black Glass Edition</span>
           </div>
         </div>
 
         {/* Section 1: MENU matching Image 2 */}
         <div className="mb-8">
-          <p className="px-3 text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 font-hud">
+          <p className="px-3 text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2.5 font-hud">
             MENU
           </p>
           <nav className="space-y-1">
@@ -79,15 +77,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
                     isActive ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  {/* Sliding active pill indicator (Image 2 signature) */}
                   {isActive && (
                     <motion.div
                       layoutId="active-pill"
-                      className="absolute inset-0 bg-[#2d2824] rounded-xl border border-white/5 shadow-sm -z-0"
+                      className="absolute inset-0 liquid-glass-pill rounded-xl -z-0"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
-                  <Icon className={`w-4 h-4 relative z-10 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
+                  <Icon className={`w-4 h-4 relative z-10 ${isActive ? 'text-white' : 'text-zinc-500'}`} />
                   <span className="relative z-10">{item.label}</span>
                 </button>
               )
@@ -97,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
 
         {/* Section 2: YOUR PLAYLISTS matching Image 2 */}
         <div className="mb-6">
-          <p className="px-3 text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 font-hud">
+          <p className="px-3 text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2.5 font-hud">
             YOUR PLAYLISTS
           </p>
           <nav className="space-y-1">
@@ -107,8 +104,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
                 onClick={() => onViewChange('playlists')}
                 className={`w-full text-left px-3.5 py-2 rounded-xl text-sm transition-colors truncate cursor-pointer ${
                   currentView === 'playlists' && idx === 0
-                    ? 'text-zinc-200 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#25221f]/50'
+                    ? 'text-white font-semibold bg-white/[0.04]'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
                 }`}
               >
                 {pl.name}
@@ -117,12 +114,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
           </nav>
         </div>
 
-        {/* Favorites & History shortcuts */}
-        <div className="pt-2 border-t border-white/5">
+        {/* Favorites & History */}
+        <div className="pt-2 border-t border-white/[0.06]">
           <button
             onClick={() => onViewChange('favorites')}
             className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-              currentView === 'favorites' ? 'text-rose-400 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+              currentView === 'favorites' ? 'text-rose-500 font-semibold bg-white/[0.04]' : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Heart className="w-3.5 h-3.5" />
@@ -131,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
           <button
             onClick={() => onViewChange('history')}
             className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-              currentView === 'history' ? 'text-white font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+              currentView === 'history' ? 'text-white font-semibold bg-white/[0.04]' : 'text-zinc-400 hover:text-white'
             }`}
           >
             <History className="w-3.5 h-3.5" />
@@ -141,16 +138,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
       </div>
 
       {/* User Session Footer */}
-      <div className="pt-4 border-t border-[#302c28]/80 px-2">
+      <div className="pt-4 border-t border-white/[0.06] px-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-[#292522] border border-white/10 flex items-center justify-center text-xs font-bold text-zinc-300">
+            <div className="w-8 h-8 rounded-full liquid-glass-pill flex items-center justify-center text-xs font-bold text-white">
               {user?.username.charAt(0).toUpperCase() || 'N'}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white truncate">{user?.username || 'neo'}</p>
-              <p className="text-[11px] text-zinc-400 truncate">
-                {user?.isAdmin ? 'Administrator' : 'Listener'}
+              <p className="text-[11px] text-zinc-500 truncate font-hud">
+                {user?.isAdmin ? 'ADMINISTRATOR' : 'LISTENER'}
               </p>
             </div>
           </div>
@@ -158,14 +155,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
             <button
               onClick={() => onViewChange('settings')}
               title="Settings"
-              className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => logout()}
               title="Sign out"
-              className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
