@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { X, Play, Pause, RotateCcw, RotateCw, Sliders } from 'lucide-react'
+import { X, Play, Pause, RotateCcw, RotateCw } from 'lucide-react'
 import { usePlayerStore } from '../store/playerStore'
 import { audioEngine } from '../lib/audioEngine'
 
@@ -8,11 +8,10 @@ interface AudioHUDProps {
   className?: string
   compact?: boolean
   onClose?: () => void
-  onOpenDSP?: () => void
 }
 
-export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = false, onClose, onOpenDSP }) => {
-  const { currentTrack, isPlaying, currentTime, duration, dspState, togglePlay, seek } = usePlayerStore()
+export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = false, onClose }) => {
+  const { currentTrack, isPlaying, currentTime, duration, togglePlay, seek } = usePlayerStore()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animFrameId = useRef<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -93,7 +92,7 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
 
       ctx.clearRect(0, 0, width, height)
 
-      // 1. Fetch Real-time Audio Frequency Data from Studio DSP Engine
+      // 1. Fetch Real-time Audio Frequency Data from Built-in Studio DSP Engine
       const analyser = audioEngine.getAnalyser()
       let freqData = new Uint8Array(64)
       if (analyser && isPlaying) {
@@ -208,32 +207,18 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-rose-500 animate-pulse' : 'bg-zinc-600'}`} />
           <span className="text-white font-bold tracking-widest">
-            {isPlaying ? 'MONITORING AUDIO' : 'STANDBY'}
+            {isPlaying ? 'LIVE STREAM' : 'STANDBY'}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* DSP Preset Badge with Click to Tune */}
-          {onOpenDSP && (
-            <button
-              onClick={onOpenDSP}
-              className="flex items-center gap-1 px-2.5 py-0.5 rounded-full liquid-glass-pill text-[10px] text-rose-400 font-bold hover:bg-white/[0.1] transition-all cursor-pointer"
-              title="Click to tune 10-band EQ & master dynamics"
-            >
-              <Sliders className="w-3 h-3 text-rose-500" />
-              <span>{dspState.enabled ? dspState.preset.toUpperCase() : 'DSP OFF'}</span>
-            </button>
-          )}
-
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="p-1 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-colors cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Interactive Circular Jog Wheel & Radar Canvas */}
@@ -284,10 +269,10 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
           STATUS
         </span>
         <p className="text-xs text-white font-medium tracking-tight">
-          {isPlaying ? 'Secure link established.' : 'Stream idle. Waiting for playback...'}
+          {isPlaying ? 'Master stream active.' : 'Stream idle. Waiting for playback...'}
         </p>
         <p className="text-xs text-zinc-400 font-normal mt-0.5">
-          {isPlaying ? `Capturing input stream: ${currentTrack?.title || 'Audio'}` : 'Audio engine standby.'}
+          {isPlaying ? `Playing: ${currentTrack?.title || 'Audio'}` : 'Audio engine standby.'}
         </p>
       </div>
 

@@ -1,7 +1,7 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import type { Track } from '../types'
 import { api } from '../lib/api'
-import { audioEngine, type PresetName, type DSPState } from '../lib/audioEngine'
+import { audioEngine } from '../lib/audioEngine'
 
 interface PlayerState {
   currentTrack: Track | null
@@ -15,9 +15,6 @@ interface PlayerState {
   queue: Track[]
   queueIndex: number
   hasScrobbled: boolean
-
-  // Studio Audiophile DSP State
-  dspState: DSPState
 
   // Actions
   playTrack: (track: Track, newQueue?: Track[]) => void
@@ -33,13 +30,6 @@ interface PlayerState {
   toggleRepeat: () => void
   addToQueue: (track: Track) => void
   toggleStarCurrentTrack: () => Promise<void>
-
-  // DSP Actions
-  setDspEnabled: (enabled: boolean) => void
-  setDspPreset: (preset: PresetName) => void
-  setPreAmpGain: (gain: number) => void
-  setEQBand: (index: number, gain: number) => void
-  setCompressorEnabled: (enabled: boolean) => void
 }
 
 // Singleton Audio Element
@@ -69,33 +59,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     queue: [],
     queueIndex: -1,
     hasScrobbled: false,
-
-    dspState: audioEngine.getState(),
-
-    setDspEnabled: (enabled: boolean) => {
-      audioEngine.setEnabled(enabled)
-      set({ dspState: audioEngine.getState() })
-    },
-
-    setDspPreset: (preset: PresetName) => {
-      audioEngine.setPreset(preset)
-      set({ dspState: audioEngine.getState() })
-    },
-
-    setPreAmpGain: (gain: number) => {
-      audioEngine.setPreAmpGain(gain)
-      set({ dspState: audioEngine.getState() })
-    },
-
-    setEQBand: (index: number, gain: number) => {
-      audioEngine.setEQBand(index, gain)
-      set({ dspState: audioEngine.getState() })
-    },
-
-    setCompressorEnabled: (enabled: boolean) => {
-      audioEngine.setCompressorEnabled(enabled)
-      set({ dspState: audioEngine.getState() })
-    },
 
     playTrack: (track: Track, newQueue?: Track[]) => {
       const a = getAudio()
@@ -225,7 +188,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       if (queueIndex > 0) {
         playTrack(queue[queueIndex - 1])
       } else if (queue.length > 0) {
-        playTrack(queue[queue.length - 1])
+        playTrack(queue[queueIndex - 1])
       }
     },
 
