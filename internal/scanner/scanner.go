@@ -1,4 +1,4 @@
-﻿package scanner
+package scanner
 
 import (
 	"bufio"
@@ -294,8 +294,8 @@ func (s *Scanner) processBatch(ctx context.Context, libraryID string, batch []Ex
 				ID:               trackID,
 				PID:              pid,
 				LibraryID:        libraryID,
-				Path:             df.Path,
-				FolderPath:       filepath.Dir(df.Path),
+				Path:             filepath.ToSlash(df.Path),
+				FolderPath:       filepath.ToSlash(filepath.Dir(df.Path)),
 				Filename:         filepath.Base(df.Path),
 				Title:            cleanTitle,
 				SortTitle:        sortTitle,
@@ -354,7 +354,8 @@ func (s *Scanner) resolveTrackIdentity(
 	// Tier 1 & 2: Same path
 	var existingID, existingPID string
 	var existingMTime int64
-	err := tx.QueryRowContext(ctx, `SELECT id, pid, mtime FROM tracks WHERE path = ?`, df.Path).Scan(&existingID, &existingPID, &existingMTime)
+	normPath := filepath.ToSlash(df.Path)
+	err := tx.QueryRowContext(ctx, `SELECT id, pid, mtime FROM tracks WHERE path = ? OR path = ?`, df.Path, normPath).Scan(&existingID, &existingPID, &existingMTime)
 	if err == nil {
 		return existingID, existingPID
 	}

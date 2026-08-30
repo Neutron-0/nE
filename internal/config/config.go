@@ -98,8 +98,8 @@ func DefaultConfig() *Config {
 			BusyTimeout: 5000,
 		},
 		Auth: AuthConfig{
-			JWTSecretKey:       "",
-			AccessTokenExpiry:  15 * time.Minute,
+			JWTSecretKey:       "ne-audio-streaming-production-secret-key-32b",
+			AccessTokenExpiry:  7 * 24 * time.Hour,
 			RefreshTokenExpiry: 30 * 24 * time.Hour,
 			RateLimitRequests:  10,
 			RateLimitWindowSec: 60,

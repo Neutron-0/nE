@@ -51,6 +51,15 @@ class ApiClient {
     })
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.setToken(null)
+        if (!endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/setup')) {
+          setTimeout(() => {
+            window.location.reload()
+          }, 300)
+        }
+      }
+
       let errorMessage = `HTTP Error ${response.status}`
       try {
         const errorData = await response.json()

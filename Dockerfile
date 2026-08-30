@@ -26,14 +26,16 @@ RUN apk add --no-cache ffmpeg ca-certificates tzdata
 WORKDIR /app
 
 # Create standard directories
-RUN mkdir -p /config /data /cache/artwork /cache/transcode /music
+RUN mkdir -p /config /data /cache/artwork /cache/transcode /music /app/music
 
 # Copy compiled backend binary
 COPY --from=backend-builder /app/ne /usr/local/bin/ne
 
-# Copy bundled music collection and database snapshot into runtime container
+# Copy bundled music collection, database snapshot, and config keys into runtime container
 COPY music/ /music/
+COPY music/ /app/music/
 COPY data/ /data/
+COPY config/ /config/
 
 EXPOSE 4533
 
@@ -44,6 +46,7 @@ ENV NE_PORT=4533 \
     NE_CACHE_DIR=/cache \
     NE_MUSIC_DIR=/music \
     NE_DB_PATH=/data/ne.db \
+    NE_JWT_SECRET="ne-audio-streaming-production-secret-key-32b" \
     NE_STREAMING_MAX_CONCURRENT_TRANSCODES=1
 
 ENTRYPOINT ["/usr/local/bin/ne"]

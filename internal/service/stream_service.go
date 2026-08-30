@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -74,7 +74,23 @@ func (s *StreamService) StreamTrack(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	// Direct Play with standard RFC 7233 Range support
-	file, err := os.Open(track.Path)
+	resolvedPath := track.Path
+	if _, err := os.Stat(resolvedPath); os.IsNotExist(err) {
+		candidates := []string{
+			filepath.Join("music", track.Filename),
+			filepath.Join("/music", track.Filename),
+			filepath.Join("music", filepath.Base(track.Path)),
+			filepath.Join("/music", filepath.Base(track.Path)),
+		}
+		for _, cand := range candidates {
+			if _, err := os.Stat(cand); err == nil {
+				resolvedPath = cand
+				break
+			}
+		}
+	}
+
+	file, err := os.Open(resolvedPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return domain.ErrNotFound("Audio file", track.Path)
@@ -99,6 +115,17 @@ func verifyPathContainment(libraryRoot, targetPath string) error {
 	cleanTarget := filepath.Clean(targetPath)
 	cleanRoot := filepath.Clean(libraryRoot)
 
+	if !filepath.IsAbs(cleanRoot) {
+		if abs, err := filepath.Abs(cleanRoot); err == nil {
+			cleanRoot = abs
+		}
+	}
+	if !filepath.IsAbs(cleanTarget) {
+		if abs, err := filepath.Abs(cleanTarget); err == nil {
+			cleanTarget = abs
+		}
+	}
+
 	realTarget, err := filepath.EvalSymlinks(cleanTarget)
 	if err != nil {
 		realTarget = cleanTarget
@@ -110,7 +137,7 @@ func verifyPathContainment(libraryRoot, targetPath string) error {
 	}
 
 	rel, err := filepath.Rel(realRoot, realTarget)
-	if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+	if err != nil || strings.HasPrefix(rel, "..") {
 		return fmt.Errorf("path traversal attempt")
 	}
 

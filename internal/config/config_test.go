@@ -1,4 +1,4 @@
-﻿package config_test
+package config_test
 
 import (
 	"testing"
@@ -15,8 +15,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Scanner.WorkerCount != 4 {
 		t.Errorf("expected default worker count 4, got %d", cfg.Scanner.WorkerCount)
 	}
-	if cfg.Auth.AccessTokenExpiry != 15*time.Minute {
-		t.Errorf("expected default access token expiry 15m, got %v", cfg.Auth.AccessTokenExpiry)
+	if cfg.Auth.AccessTokenExpiry != 7*24*time.Hour {
+		t.Errorf("expected default access token expiry 7 days, got %v", cfg.Auth.AccessTokenExpiry)
 	}
 }
 
