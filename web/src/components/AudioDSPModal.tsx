@@ -1,4 +1,5 @@
-﻿import React from 'react'
+﻿import React, { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Sliders, Volume2, Sparkles, Zap, Radio } from 'lucide-react'
 import { usePlayerStore } from '../store/playerStore'
@@ -19,35 +20,51 @@ export const AudioDSPModal: React.FC<AudioDSPModalProps> = ({ isOpen, onClose })
     setCompressorEnabled,
   } = usePlayerStore()
 
-  if (!isOpen) return null
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
+  if (!isOpen || typeof document === 'undefined') return null
 
   const formatFreq = (freq: number) => {
     if (freq >= 1000) return `${freq / 1000}k`
     return `${freq}`
   }
 
-  return (
+  const modalContent = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4 select-none">
+      <div 
+        className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-2xl flex items-center justify-center p-4 select-none"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose()
+        }}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 16 }}
-          transition={{ duration: 0.25 }}
-          className="w-full max-w-2xl liquid-glass rounded-[28px] p-6 md:p-8 shadow-2xl overflow-hidden relative border border-white/[0.12]"
+          transition={{ duration: 0.2 }}
+          className="w-full max-w-2xl liquid-glass rounded-[28px] p-6 md:p-8 shadow-[0_30px_100px_rgba(0,0,0,0.9)] overflow-hidden relative border border-white/[0.14] bg-[#080808]/95"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/[0.08] pb-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl liquid-glass flex items-center justify-center text-white">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 border-b border-white/[0.08] pb-4 mb-6">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl liquid-glass flex items-center justify-center text-white shrink-0">
                 <Sliders className="w-5 h-5 text-rose-500" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-black text-white tracking-tight">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xl font-black text-white tracking-tight whitespace-nowrap">
                     Studio DSP Master Engine
                   </h3>
-                  <span className="text-[10px] font-hud font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                  <span className="text-[10px] font-hud font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 whitespace-nowrap">
                     24-BIT MASTER
                   </span>
                 </div>
@@ -57,14 +74,14 @@ export const AudioDSPModal: React.FC<AudioDSPModalProps> = ({ isOpen, onClose })
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               {/* Master Bypass Toggle */}
               <button
                 onClick={() => setDspEnabled(!dspState.enabled)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   dspState.enabled
                     ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'
-                    : 'liquid-glass text-zinc-400 hover:text-white'
+                    : 'liquid-glass text-zinc-400 hover:text-white border border-white/10'
                 }`}
               >
                 <Radio className={`w-3.5 h-3.5 ${dspState.enabled ? 'animate-pulse' : ''}`} />
@@ -73,7 +90,8 @@ export const AudioDSPModal: React.FC<AudioDSPModalProps> = ({ isOpen, onClose })
 
               <button
                 onClick={onClose}
-                className="p-1.5 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-colors cursor-pointer"
+                className="p-2 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-colors cursor-pointer"
+                title="Close"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -86,7 +104,7 @@ export const AudioDSPModal: React.FC<AudioDSPModalProps> = ({ isOpen, onClose })
               <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2.5 font-hud">
                 Acoustic Mastering Presets
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {(Object.keys(PRESETS) as PresetName[]).map((key) => {
                   const p = PRESETS[key]
                   const isActive = dspState.preset === key && dspState.enabled
@@ -97,10 +115,10 @@ export const AudioDSPModal: React.FC<AudioDSPModalProps> = ({ isOpen, onClose })
                         if (!dspState.enabled) setDspEnabled(true)
                         setDspPreset(key)
                       }}
-                      className={`p-3 rounded-2xl text-left transition-all cursor-pointer ${
+                      className={`p-3.5 rounded-2xl text-left transition-all cursor-pointer ${
                         isActive
-                          ? 'liquid-glass-pill border-rose-500/50 bg-rose-500/10 text-white shadow-lg'
-                          : 'liquid-glass-card hover:bg-white/[0.04] text-zinc-400'
+                          ? 'liquid-glass-pill border-rose-500/50 bg-rose-500/15 text-white shadow-lg'
+                          : 'liquid-glass-card hover:bg-white/[0.05] text-zinc-400'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -210,13 +228,13 @@ export const AudioDSPModal: React.FC<AudioDSPModalProps> = ({ isOpen, onClose })
                   <button
                     onClick={() => setCompressorEnabled(!dspState.compressorEnabled)}
                     disabled={!dspState.enabled}
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer ${
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded cursor-pointer transition-all ${
                       dspState.compressorEnabled && dspState.enabled
-                        ? 'bg-rose-500 text-white'
+                        ? 'bg-rose-500 text-white shadow-md'
                         : 'bg-white/10 text-zinc-400'
                     }`}
                   >
-                    {dspState.compressorEnabled && dspState.enabled ? 'ON' : 'OFF'}
+                    {dspState.compressorEnabled && dspState.enabled ? 'ACTIVE' : 'OFF'}
                   </button>
                 </div>
                 <p className="text-[11px] text-zinc-400 mb-2">
@@ -234,4 +252,6 @@ export const AudioDSPModal: React.FC<AudioDSPModalProps> = ({ isOpen, onClose })
       </div>
     </AnimatePresence>
   )
+
+  return createPortal(modalContent, document.body)
 }
