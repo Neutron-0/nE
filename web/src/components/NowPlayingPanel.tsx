@@ -16,6 +16,8 @@ import {
   Volume2,
   VolumeX,
   ListMusic,
+  Lock,
+  Cpu,
 } from 'lucide-react'
 import * as Slider from '@radix-ui/react-slider'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -37,6 +39,8 @@ export const NowPlayingPanel: React.FC = () => {
     isShuffle,
     repeatMode,
     queue,
+    engineVariant,
+    setEngineVariant,
     playTrack,
     togglePlay,
     next,
@@ -50,6 +54,7 @@ export const NowPlayingPanel: React.FC = () => {
   } = usePlayerStore()
 
   const [mode, setMode] = useState<PanelMode>('player')
+  const [showLockedToast, setShowLockedToast] = useState(false)
 
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '0:00'
@@ -60,10 +65,15 @@ export const NowPlayingPanel: React.FC = () => {
 
   const artworkUrl = currentTrack ? api.getArtworkUrl('track', currentTrack.id, 600) : ''
 
+  const handleAppleClick = () => {
+    setShowLockedToast(true)
+    setTimeout(() => setShowLockedToast(false), 3500)
+  }
+
   return (
     <aside className="w-80 md:w-96 bg-black/85 backdrop-blur-2xl border-l border-white/[0.06] p-6 flex flex-col justify-between shrink-0 select-none h-full overflow-y-auto relative">
       {/* Top Segment Mode Switcher */}
-      <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-1 liquid-glass-pill p-1 rounded-xl text-xs font-semibold">
           <button
             onClick={() => setMode('player')}
@@ -98,6 +108,78 @@ export const NowPlayingPanel: React.FC = () => {
         >
           <Activity className="w-4 h-4 text-rose-500" />
         </button>
+      </div>
+
+      {/* Acoustic Audio Engine Profile Switcher */}
+      <div className="mb-4 liquid-glass rounded-2xl p-1.5 border border-white/[0.08] relative">
+        <div className="flex items-center justify-between px-2 py-1 mb-1 text-[10px] font-hud">
+          <span className="font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+            <Cpu className="w-3 h-3 text-rose-500" /> AUDIO ENGINE
+          </span>
+          <span className="text-zinc-500 font-mono">
+            {engineVariant === 'spotify' ? 'SPOTIFY -14 LUFS' : 'RAW DIRECT'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1">
+          {/* 1. Normal Variant */}
+          <button
+            onClick={() => setEngineVariant('normal')}
+            title="Normal: Direct uncolored bit-perfect audio stream"
+            className={`py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer text-xs font-semibold ${
+              engineVariant === 'normal'
+                ? 'bg-white text-black shadow-md font-bold'
+                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            Normal
+          </button>
+
+          {/* 2. Spotify Engine */}
+          <button
+            onClick={() => setEngineVariant('spotify')}
+            title="Spotify Engine: EBU R128 -14 LUFS volume match, acoustic curve & studio dynamics"
+            className={`py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer text-xs font-semibold ${
+              engineVariant === 'spotify'
+                ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 font-bold'
+                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            Spotify
+          </button>
+
+          {/* 3. Apple Music Engine (Locked) */}
+          <button
+            onClick={handleAppleClick}
+            title="Apple Music Studio Engine (Locked - Under Active Development)"
+            className="py-1.5 px-2 rounded-xl text-center transition-all text-xs font-semibold relative text-zinc-500 bg-white/[0.02] border border-white/[0.04] cursor-pointer hover:bg-white/[0.05] flex items-center justify-center gap-1 group"
+          >
+            <Lock className="w-3 h-3 text-amber-400/80 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="text-zinc-400">Apple</span>
+            <span className="text-[8px] font-hud px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+              LOCK
+            </span>
+          </button>
+        </div>
+
+        {/* Locked Development Banner Tooltip */}
+        <AnimatePresence>
+          {showLockedToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              className="absolute left-0 right-0 top-full mt-2 liquid-glass rounded-xl p-3 shadow-2xl z-50 text-[11px] text-zinc-300 font-sans border border-amber-500/30 bg-black/95"
+            >
+              <div className="flex items-center gap-1.5 text-amber-400 font-bold font-hud text-[10px] mb-1">
+                <Lock className="w-3 h-3" /> APPLE STUDIO ENGINE // IN DEVELOPMENT
+              </div>
+              <p className="text-zinc-400 leading-snug">
+                Replicating 24-bit ALAC dynamic headroom, Aural Harmonic Synthesizer, and spatial stereo imaging. Unlock coming soon!
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence mode="wait">
@@ -246,7 +328,7 @@ export const NowPlayingPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Controls Row matching Image 2: Shuffle, Prev, Big Play, Next, Repeat */}
+            {/* Controls Row: Shuffle, Prev, Big Play, Next, Repeat */}
             <div className="flex items-center justify-center gap-6 mb-6">
               <button
                 onClick={toggleShuffle}

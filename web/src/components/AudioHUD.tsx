@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { X, Play, Pause, RotateCcw, RotateCw } from 'lucide-react'
 import { usePlayerStore } from '../store/playerStore'
@@ -11,7 +11,7 @@ interface AudioHUDProps {
 }
 
 export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = false, onClose }) => {
-  const { currentTrack, isPlaying, currentTime, duration, togglePlay, seek } = usePlayerStore()
+  const { currentTrack, isPlaying, currentTime, duration, engineVariant, togglePlay, seek } = usePlayerStore()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animFrameId = useRef<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -211,14 +211,24 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
           </span>
         </div>
 
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-colors cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+            engineVariant === 'spotify' 
+              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
+              : 'liquid-glass-pill text-zinc-400'
+          }`}>
+            {engineVariant === 'spotify' ? 'SPOTIFY ENGINE' : 'NORMAL DIRECT'}
+          </span>
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Interactive Circular Jog Wheel & Radar Canvas */}

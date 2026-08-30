@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import type { Track } from '../types'
 import { api } from '../lib/api'
 import { audioEngine } from '../lib/audioEngine'
@@ -15,8 +15,10 @@ interface PlayerState {
   queue: Track[]
   queueIndex: number
   hasScrobbled: boolean
+  engineVariant: import('../lib/audioEngine').EngineVariant
 
   // Actions
+  setEngineVariant: (variant: import('../lib/audioEngine').EngineVariant) => void
   playTrack: (track: Track, newQueue?: Track[]) => void
   togglePlay: () => void
   pause: () => void
@@ -59,6 +61,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     queue: [],
     queueIndex: -1,
     hasScrobbled: false,
+    engineVariant: audioEngine.getVariant(),
+
+    setEngineVariant: (variant) => {
+      audioEngine.setVariant(variant)
+      set({ engineVariant: audioEngine.getVariant() })
+    },
 
     playTrack: (track: Track, newQueue?: Track[]) => {
       const a = getAudio()
