@@ -1,0 +1,13 @@
+﻿.git
+.github
+bin/
+*.exe
+web/node_modules/
+refrence/
+reference/
+Refrence/
+Reference/
+cache/artwork/*
+cache/transcode/*
+*.tmp
+*.log

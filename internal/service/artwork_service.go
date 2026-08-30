@@ -1,0 +1,86 @@
+﻿package service
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	"ne/internal/domain"
+	"ne/internal/media"
+	"ne/internal/repository"
+)
+
+type ArtworkService struct {
+	catalogRepo *repository.CatalogRepository
+	cacheDir    string
+}
+
+func NewArtworkService(catalogRepo *repository.CatalogRepository, cacheDir string) *ArtworkService {
+	artworkCache := filepath.Join(cacheDir, "artwork")
+	_ = os.MkdirAll(artworkCache, 0755)
+	return &ArtworkService{
+		catalogRepo: catalogRepo,
+		cacheDir:    artworkCache,
+	}
+}
+
+// ServeArtwork streams artwork for a given album or track with ETag caching.
+func (s *ArtworkService) ServeArtwork(ctx context.Context, w http.ResponseWriter, r *http.Request, itemType, itemID string, size int) error {
+	var filePath string
+
+	switch itemType {
+	case "track":
+		track, err := s.catalogRepo.GetTrackByID(ctx, itemID)
+		if err != nil {
+			return err
+		}
+		filePath = track.Path
+	case "album":
+		tracks, err := s.catalogRepo.ListTracksByAlbum(ctx, itemID)
+		if err != nil || len(tracks) == 0 {
+			return domain.ErrNotFound("Album artwork", itemID)
+		}
+		filePath = tracks[0].Path
+	default:
+		return domain.ErrInvalidInput("Invalid artwork item type")
+	}
+
+	// Try extracting artwork
+	art, err := media.ExtractArtwork(filePath)
+	if err != nil {
+		// Serve SVG fallback placeholder
+		return s.servePlaceholderSVG(w, r)
+	}
+
+	etag := fmt.Sprintf(`"%s"`, art.Fingerprint)
+	if match := r.Header.Get("If-None-Match"); match == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return nil
+	}
+
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Content-Type", art.MimeType)
+	w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+	w.Header().Set("Content-Length", strconv.Itoa(len(art.Data)))
+
+	http.ServeContent(w, r, "cover", time.Time{}, bytes.NewReader(art.Data))
+	return nil
+}
+
+func (s *ArtworkService) servePlaceholderSVG(w http.ResponseWriter, r *http.Request) error {
+	svg := `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+		<rect width="300" height="300" fill="#18181b"/>
+		<circle cx="150" cy="150" r="100" fill="#27272a"/>
+		<circle cx="150" cy="150" r="40" fill="#18181b"/>
+		<circle cx="150" cy="150" r="15" fill="#f43f5e"/>
+	</svg>`
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	_, err := w.Write([]byte(svg))
+	return err
+}

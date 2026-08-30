@@ -1,0 +1,36 @@
+﻿# Caddyfile for nE Production Deployment with Automatic TLS
+{
+    email admin@example.com
+}
+
+music.example.com {
+    encode gzip zstd
+
+    # Disable proxy buffering for audio streaming and Server-Sent Events (SSE)
+    @streaming path /api/v1/stream/* /api/v1/admin/scan/events
+    handle @streaming {
+        reverse_proxy ne:4533 {
+            flush_interval -1
+            transport http {
+                keepalive 30s
+            }
+        }
+    }
+
+    # Standard API and Web Player reverse proxy
+    handle {
+        reverse_proxy ne:4533 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Security Headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+}

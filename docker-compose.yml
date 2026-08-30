@@ -1,0 +1,21 @@
+﻿services:
+  ne:
+    image: ne/server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ne-audio-server
+    restart: unless-stopped
+    ports:
+      - "4533:4533"
+    environment:
+      - NE_PORT=4533
+      - NE_HOST=0.0.0.0
+      - NE_LOG_LEVEL=info
+      - NE_LOG_FORMAT=json
+      - NE_CORS_ALLOW_ALL=false
+    volumes:
+      - ./config:/config
+      - ./data:/data
+      - ./cache:/cache
+      - /path/to/your/music:/music:ro

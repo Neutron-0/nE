@@ -1,0 +1,41 @@
+﻿# Reference project (STRICTLY IGNORED - Do NOT push to GitHub)
+Reference/
+reference/
+Refrence/
+refrence/
+[Rr]eference/
+[Rr]efrence/
+
+# Binaries & Build Artifacts
+bin/
+*.exe
+*.exe.meta
+*.dll
+*.so
+*.dylib
+ne.exe
+
+# Node & Web Build Output
+web/node_modules/
+web/dist/
+web/.eslintcache
+
+# Cache & Scratch Folders
+cache/artwork/*
+cache/transcode/*
+!cache/artwork/.gitkeep
+!cache/transcode/.gitkeep
+scratch/
+*.tmp
+*.log
+
+# OS & Editor Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test & Temporary Databases
+live_backup.db
+test_sample.*

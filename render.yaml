@@ -1,0 +1,20 @@
+﻿services:
+  - type: web
+    name: ne-music-server
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NE_PORT
+        value: "4533"
+      - key: NE_HOST
+        value: "0.0.0.0"
+      - key: NE_LOG_LEVEL
+        value: "info"
+      - key: NE_LOG_FORMAT
+        value: "json"
+      - key: NE_STREAMING_MAX_CONCURRENT_TRANSCODES
+        value: "1"
+      - key: NE_JWT_SECRET
+        generateValue: true

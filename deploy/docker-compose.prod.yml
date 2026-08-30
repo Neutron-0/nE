@@ -1,0 +1,54 @@
+﻿services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: ne-caddy-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      ne:
+        condition: service_healthy
+
+  ne:
+    image: ne/server:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ne-audio-server
+    restart: unless-stopped
+    environment:
+      - NE_PORT=4533
+      - NE_HOST=0.0.0.0
+      - NE_LOG_LEVEL=info
+      - NE_LOG_FORMAT=json
+      - NE_CORS_ALLOW_ALL=false
+    volumes:
+      - ne_config:/config
+      - ne_data:/data
+      - ne_cache:/cache
+      - /mnt/storage/music:/music:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4533/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+        reservations:
+          memory: 256M
+
+volumes:
+  ne_config:
+  ne_data:
+  ne_cache:
+  caddy_data:
+  caddy_config:
