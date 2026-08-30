@@ -213,11 +213,13 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
 
         <div className="flex items-center gap-2">
           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-            engineVariant === 'spotify' 
+            engineVariant === 'apple'
+              ? 'bg-white/20 text-white border border-white/40 shadow-[0_0_10px_rgba(255,255,255,0.2)]'
+              : engineVariant === 'spotify' 
               ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
               : 'liquid-glass-pill text-zinc-400'
           }`}>
-            {engineVariant === 'spotify' ? 'SPOTIFY ENGINE' : 'NORMAL DIRECT'}
+            {engineVariant === 'apple' ? 'APPLE STUDIO 24-BIT' : engineVariant === 'spotify' ? 'SPOTIFY ENGINE' : 'NORMAL DIRECT'}
           </span>
 
           {onClose && (

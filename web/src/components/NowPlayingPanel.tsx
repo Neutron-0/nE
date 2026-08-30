@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   Play,
@@ -16,7 +16,6 @@ import {
   Volume2,
   VolumeX,
   ListMusic,
-  Lock,
   Cpu,
 } from 'lucide-react'
 import * as Slider from '@radix-ui/react-slider'
@@ -54,7 +53,6 @@ export const NowPlayingPanel: React.FC = () => {
   } = usePlayerStore()
 
   const [mode, setMode] = useState<PanelMode>('player')
-  const [showLockedToast, setShowLockedToast] = useState(false)
 
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '0:00'
@@ -64,11 +62,6 @@ export const NowPlayingPanel: React.FC = () => {
   }
 
   const artworkUrl = currentTrack ? api.getArtworkUrl('track', currentTrack.id, 600) : ''
-
-  const handleAppleClick = () => {
-    setShowLockedToast(true)
-    setTimeout(() => setShowLockedToast(false), 3500)
-  }
 
   return (
     <aside className="w-80 md:w-96 bg-black/85 backdrop-blur-2xl border-l border-white/[0.06] p-6 flex flex-col justify-between shrink-0 select-none h-full overflow-y-auto relative">
@@ -117,7 +110,11 @@ export const NowPlayingPanel: React.FC = () => {
             <Cpu className="w-3 h-3 text-rose-500" /> AUDIO ENGINE
           </span>
           <span className="text-zinc-500 font-mono">
-            {engineVariant === 'spotify' ? 'SPOTIFY -14 LUFS' : 'RAW DIRECT'}
+            {engineVariant === 'apple'
+              ? 'APPLE 24-BIT // -16 LUFS'
+              : engineVariant === 'spotify'
+              ? 'SPOTIFY // -14 LUFS'
+              : 'RAW DIRECT'}
           </span>
         </div>
 
@@ -148,38 +145,19 @@ export const NowPlayingPanel: React.FC = () => {
             Spotify
           </button>
 
-          {/* 3. Apple Music Engine (Locked) */}
+          {/* 3. Apple Music Engine (Unlocked) */}
           <button
-            onClick={handleAppleClick}
-            title="Apple Music Studio Engine (Locked - Under Active Development)"
-            className="py-1.5 px-2 rounded-xl text-center transition-all text-xs font-semibold relative text-zinc-500 bg-white/[0.02] border border-white/[0.04] cursor-pointer hover:bg-white/[0.05] flex items-center justify-center gap-1 group"
+            onClick={() => setEngineVariant('apple')}
+            title="Apple Studio Engine: 24-bit dynamic headroom (-16 LUFS), Aural Harmonic Synthesizer & Spatial Stage"
+            className={`py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer text-xs font-semibold flex items-center justify-center gap-1 ${
+              engineVariant === 'apple'
+                ? 'bg-gradient-to-r from-zinc-200 to-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] font-bold'
+                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
           >
-            <Lock className="w-3 h-3 text-amber-400/80 group-hover:scale-110 transition-transform shrink-0" />
-            <span className="text-zinc-400">Apple</span>
-            <span className="text-[8px] font-hud px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
-              LOCK
-            </span>
+            <span>Apple Studio</span>
           </button>
         </div>
-
-        {/* Locked Development Banner Tooltip */}
-        <AnimatePresence>
-          {showLockedToast && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              className="absolute left-0 right-0 top-full mt-2 liquid-glass rounded-xl p-3 shadow-2xl z-50 text-[11px] text-zinc-300 font-sans border border-amber-500/30 bg-black/95"
-            >
-              <div className="flex items-center gap-1.5 text-amber-400 font-bold font-hud text-[10px] mb-1">
-                <Lock className="w-3 h-3" /> APPLE STUDIO ENGINE // IN DEVELOPMENT
-              </div>
-              <p className="text-zinc-400 leading-snug">
-                Replicating 24-bit ALAC dynamic headroom, Aural Harmonic Synthesizer, and spatial stereo imaging. Unlock coming soon!
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       <AnimatePresence mode="wait">
