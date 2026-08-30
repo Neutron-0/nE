@@ -1,10 +1,22 @@
-﻿# 🎵 nE — Autonomous Personal Music Server & Streaming Platform
+# 🎵 nE — Autonomous Personal Music Server & Streaming Platform
 
 **nE** is a modern, lightweight, high-performance self-hosted personal music streaming server and web player designed for audiophiles. Built with a unified **Go backend** and an embedded **React 19 single-page web player**, nE provides zero-dependency deployment, real-time audio transcoding, synchronized karaoke lyrics, dynamic smart mixes, and native mobile streaming support via the OpenSubsonic protocol.
 
 ---
 
 ## ✨ Features
+
+### 🎛️ 3-Tier Master Audio Engine (Normal, Spotify, Apple Studio)
+nE includes a built-in 32-bit floating-point Web Audio DSP mastering pipeline featuring three distinct switchable engines:
+* **Normal (Bit-Perfect Direct)**: 100% clean, uncolored, bit-perfect pass-through with flat frequency response for external DAC purists.
+* **Spotify Master Engine**: Calibrated to EBU R128 **-14 dB LUFS** with a 10-band acoustic profile, sub-bass transient punch, and master bus soft-knee dynamic compression.
+* **Apple Studio Hyperion Engine**: Our flagship audiophile processing chain engineered to surpass Apple Music's playback fidelity:
+  * **24-Bit Dynamic Headroom (-16 dB LUFS)**: Preserves dynamic breathing room and natural transient attack.
+  * **Aural Harmonic Synthesizer**: Uses non-linear polynomial wave-shaping ($f(x) = 1.5x - 0.5x^3$) to synthesize musical 2nd/3rd order overtones into the **16 kHz – 22 kHz** band, restoring the "air" and breath stripped by lossy compression.
+  * **Sub-Harmonic Bass Extender**: Tightens fundamental sub-frequencies (< 75 Hz) without boomy mid-bass mud.
+  * **Binaural Spatial Soundstage Matrix**: Employs psychoacoustic Haas micro-delays (12ms) to project instruments outside your headphones into an open 3D soundfield.
+  * **-1.0 dBTP True-Peak Limiter**: Eliminates digital Inter-Sample Peaks (ISPs) and analog DAC clipping distortion.
+* 📖 **[Read the Full Audio Engine Technical Architecture & Math Guide](docs/AUDIO_ENGINES.md)**
 
 ### 🎧 Playback & Streaming
 * **Modern Web Player**: Built with React 19, Tailwind CSS, Lucide icons, and HTML5 Audio. Supports full queue control, shuffle, repeat, volume adjustment, and quick seeking.
