@@ -53,11 +53,6 @@ class ApiClient {
     if (!response.ok) {
       if (response.status === 401) {
         this.setToken(null)
-        if (!endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/setup')) {
-          setTimeout(() => {
-            window.location.reload()
-          }, 300)
-        }
       }
 
       let errorMessage = `HTTP Error ${response.status}`
@@ -103,6 +98,9 @@ class ApiClient {
   }
 
   async getMe(): Promise<User> {
+    if (!this.token) {
+      throw new Error('No authentication token')
+    }
     return this.request<User>('/auth/me')
   }
 
