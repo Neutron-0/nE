@@ -11,7 +11,6 @@ import {
   Heart,
   Download,
   MoreHorizontal,
-  Mic2,
   Activity,
   Disc,
   Volume2,
@@ -24,7 +23,6 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { usePlayerStore } from '../store/playerStore'
 import { api } from '../lib/api'
 import { AudioHUD } from './AudioHUD'
-import { LyricsOverlay } from './LyricsOverlay'
 
 type PanelMode = 'player' | 'queue' | 'hud'
 
@@ -52,7 +50,6 @@ export const NowPlayingPanel: React.FC = () => {
   } = usePlayerStore()
 
   const [mode, setMode] = useState<PanelMode>('player')
-  const [showLyrics, setShowLyrics] = useState(false)
 
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '0:00'
@@ -65,7 +62,7 @@ export const NowPlayingPanel: React.FC = () => {
 
   return (
     <aside className="w-80 md:w-96 bg-black/85 backdrop-blur-2xl border-l border-white/[0.06] p-6 flex flex-col justify-between shrink-0 select-none h-full overflow-y-auto relative">
-      {/* Top Segment Mode Switcher */}
+      {/* Top Segment Mode Switcher (Mic button removed) */}
       <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-1 liquid-glass-pill p-1 rounded-xl text-xs font-semibold">
           <button
@@ -95,11 +92,11 @@ export const NowPlayingPanel: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setShowLyrics(true)}
-          title="Synchronized Lyrics"
+          onClick={() => setMode('hud')}
+          title="Interactive Radar HUD"
           className="p-1.5 text-zinc-400 hover:text-white rounded-lg liquid-glass-pill transition-colors cursor-pointer"
         >
-          <Mic2 className="w-4 h-4" />
+          <Activity className="w-4 h-4 text-rose-500" />
         </button>
       </div>
 
@@ -192,7 +189,7 @@ export const NowPlayingPanel: React.FC = () => {
                 {/* HUD Radar Quick Trigger Icon */}
                 <button
                   onClick={() => setMode('hud')}
-                  title="Switch to Industrial Audio HUD"
+                  title="Switch to Interactive Radar HUD"
                   className="absolute top-4 right-4 p-2.5 rounded-full liquid-glass-pill text-white transition-all shadow-lg cursor-pointer hover:scale-105"
                 >
                   <Activity className="w-4 h-4 text-rose-500" />
@@ -303,7 +300,7 @@ export const NowPlayingPanel: React.FC = () => {
               </button>
             </div>
 
-            {/* Bottom Actions Row: Heart, Download, Options, Volume */}
+            {/* Bottom Actions Row: Heart, Queue, HUD, Volume, Options */}
             <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
               <button
                 onClick={toggleStarCurrentTrack}
@@ -325,7 +322,7 @@ export const NowPlayingPanel: React.FC = () => {
 
               <button
                 onClick={() => setMode('hud')}
-                title="Industrial Audio HUD"
+                title="Interactive Radar HUD"
                 className="p-2 text-zinc-500 hover:text-white transition-colors cursor-pointer"
               >
                 <Activity className="w-4 h-4" />
@@ -387,8 +384,6 @@ export const NowPlayingPanel: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <LyricsOverlay isOpen={showLyrics} onClose={() => setShowLyrics(false)} />
     </aside>
   )
 }

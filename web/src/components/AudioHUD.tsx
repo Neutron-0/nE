@@ -1,5 +1,6 @@
-﻿import React, { useEffect, useRef } from 'react'
+﻿import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
+import { RotateCcw, RotateCw, Play, Pause } from 'lucide-react'
 import { usePlayerStore, getAudio } from '../store/playerStore'
 
 interface AudioHUDProps {
@@ -13,9 +14,10 @@ let analyserNode: AnalyserNode | null = null
 let sourceNode: MediaElementAudioSourceNode | null = null
 
 export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = false, onClose }) => {
-  const { currentTrack, isPlaying, currentTime } = usePlayerStore()
+  const { currentTrack, isPlaying, currentTime, duration, togglePlay, seek } = usePlayerStore()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animFrameId = useRef<number | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
     try {
@@ -53,6 +55,45 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
     return `${pad(hrs)}:${pad(mins)}:${pad(secs)}:${pad(ms)}`
   }
 
+  // Handle circular scrub interaction (jog wheel)
+  const handleScrubAtPoint = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current
+    if (!canvas || !duration || duration <= 0) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = clientX - rect.left - rect.width / 2
+    const y = clientY - rect.top - rect.height / 2
+
+    // Check if clicked in center (within 24px) -> toggle play
+    const dist = Math.sqrt(x * x + y * y)
+    if (dist < 24) {
+      togglePlay()
+      return
+    }
+
+    // Polar angle calculation
+    let angle = Math.atan2(y, x) + Math.PI / 2
+    if (angle < 0) angle += Math.PI * 2
+
+    const progressRatio = angle / (Math.PI * 2)
+    seek(progressRatio * duration)
+  }
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    setIsDragging(true)
+    handleScrubAtPoint(e.clientX, e.clientY)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isDragging) {
+      handleScrubAtPoint(e.clientX, e.clientY)
+    }
+  }
+
+  const handlePointerUp = () => {
+    setIsDragging(false)
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -78,30 +119,45 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
         hasRealFreqs = freqData.some((v) => v > 0)
       }
 
+      // Calculate progress angle (0 to 2*PI starting at top -PI/2)
+      const progressFraction = duration > 0 ? currentTime / duration : 0
+      const currentProgressAngle = progressFraction * Math.PI * 2 - Math.PI / 2
+
       // 1. Outer dashed concentric guide ring
       ctx.beginPath()
-      ctx.arc(centerX, centerY, baseRadius + 14, 0, Math.PI * 2)
+      ctx.arc(centerX, centerY, baseRadius + 15, 0, Math.PI * 2)
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
       ctx.lineWidth = 1
       ctx.setLineDash([2, 4])
       ctx.stroke()
       ctx.setLineDash([])
 
-      // 2. Inner circular target ring
+      // 2. Progress Arc along the radar perimeter
+      if (progressFraction > 0) {
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, baseRadius + 15, -Math.PI / 2, currentProgressAngle)
+        ctx.strokeStyle = '#ff3b30'
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+
+      // 3. Inner circular target ring
       ctx.beginPath()
       ctx.arc(centerX, centerY, baseRadius - 12, 0, Math.PI * 2)
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // 3. Center recording / live boundary ring
+      // 4. Center interactive boundary ring
       ctx.beginPath()
-      ctx.arc(centerX, centerY, 16, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
+      ctx.arc(centerX, centerY, 20, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
+      ctx.fill()
+      ctx.strokeStyle = isPlaying ? 'rgba(255, 59, 48, 0.4)' : 'rgba(255, 255, 255, 0.18)'
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // 4. Render radial tick marks with audio waveform spikes
+      // 5. Render radial tick marks with audio waveform spikes
       phase += isPlaying ? 0.04 : 0.005
 
       for (let i = 0; i < totalTicks; i++) {
@@ -144,17 +200,41 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
         ctx.beginPath()
         ctx.moveTo(x1, y1)
         ctx.lineTo(x2, y2)
-        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`
+
+        // Highlight ticks behind the current scrubber position
+        if (angle <= currentProgressAngle) {
+          ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, alpha + 0.3)})`
+        } else {
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`
+        }
+
         ctx.lineWidth = 1.25
         ctx.stroke()
       }
 
-      // 5. Center Red Live Status Dot (matching Image 1)
+      // 6. Playhead needle / indicator on the scrub ring
+      const needleCos = Math.cos(currentProgressAngle)
+      const needleSin = Math.sin(currentProgressAngle)
       ctx.beginPath()
-      ctx.arc(centerX, centerY, 5.5, 0, Math.PI * 2)
-      ctx.fillStyle = isPlaying ? '#ff3b30' : 'rgba(255, 59, 48, 0.4)'
+      ctx.arc(
+        centerX + needleCos * (baseRadius + 15),
+        centerY + needleSin * (baseRadius + 15),
+        3.5,
+        0,
+        Math.PI * 2
+      )
+      ctx.fillStyle = '#ff3b30'
       ctx.shadowColor = '#ff3b30'
-      ctx.shadowBlur = isPlaying ? 16 : 0
+      ctx.shadowBlur = 10
+      ctx.fill()
+      ctx.shadowBlur = 0
+
+      // 7. Center Red Live Status / Play-Pause Dot (matching Image 1)
+      ctx.beginPath()
+      ctx.arc(centerX, centerY, 6.5, 0, Math.PI * 2)
+      ctx.fillStyle = isPlaying ? '#ff3b30' : 'rgba(255, 255, 255, 0.7)'
+      ctx.shadowColor = isPlaying ? '#ff3b30' : 'rgba(255, 255, 255, 0.4)'
+      ctx.shadowBlur = isPlaying ? 16 : 8
       ctx.fill()
       ctx.shadowBlur = 0
 
@@ -168,7 +248,7 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
         cancelAnimationFrame(animFrameId.current)
       }
     }
-  }, [isPlaying])
+  }, [isPlaying, currentTime, duration])
 
   return (
     <motion.div
@@ -194,18 +274,50 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
         </div>
       </div>
 
-      {/* Center Oscilloscope Radar Canvas */}
-      <div className="relative flex items-center justify-center my-4">
+      {/* Center Interactive Oscilloscope Radar Jog Wheel */}
+      <div className="relative flex flex-col items-center justify-center my-3">
         <canvas
           ref={canvasRef}
           width={compact ? 200 : 260}
           height={compact ? 200 : 260}
-          className="w-full max-w-[260px] aspect-square"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+          className="w-full max-w-[260px] aspect-square cursor-pointer active:cursor-grabbing touch-none"
+          title="Jog Wheel: Drag/Click circle to scrub. Click center to Pause/Play."
         />
+
+        {/* Quick Rewind / Forward Tactile Scrub Bar */}
+        <div className="flex items-center justify-center gap-6 mt-1 text-xs">
+          <button
+            onClick={() => seek(Math.max(0, currentTime - 5))}
+            title="Rewind 5s"
+            className="flex items-center gap-1 px-3 py-1 rounded-lg liquid-glass-pill text-zinc-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" /> -5s
+          </button>
+
+          <button
+            onClick={togglePlay}
+            title={isPlaying ? 'Pause' : 'Play'}
+            className="p-2 rounded-full liquid-glass-pill text-white hover:bg-white/[0.1] transition-colors cursor-pointer"
+          >
+            {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
+          </button>
+
+          <button
+            onClick={() => seek(Math.min(duration, currentTime + 5))}
+            title="Fast Forward 5s"
+            className="flex items-center gap-1 px-3 py-1 rounded-lg liquid-glass-pill text-zinc-400 hover:text-white transition-colors cursor-pointer"
+          >
+            +5s <RotateCw className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       {/* Technical Status Block matching Image 1 */}
-      <div className="border-t border-white/[0.06] pt-3 mb-4">
+      <div className="border-t border-white/[0.06] pt-3 mb-3">
         <span className="text-[10px] tracking-widest uppercase text-zinc-500 font-semibold block mb-1">
           STATUS
         </span>

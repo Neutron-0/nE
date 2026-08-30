@@ -36,6 +36,7 @@ type Server struct {
 	smartH      *SmartPlaylistHandler
 	lyricsH     *LyricsHandler
 	artistMetaH *ArtistMetaHandler
+	uploadH     *UploadHandler
 	subsonicH   *subsonic.SubsonicHandler
 	jwtManager  *auth.JWTManager
 }
@@ -73,6 +74,7 @@ func NewServer(
 	if catalogService != nil {
 		s.catalogH = NewCatalogHandler(catalogService, artistMetaService)
 		s.adminH = NewAdminHandler(catalogService)
+		s.uploadH = NewUploadHandler(catalogService)
 	}
 	if streamService != nil {
 		s.streamH = NewStreamHandler(streamService)
@@ -190,6 +192,14 @@ func (s *Server) setupRoutes() {
 			r.Group(func(pr chi.Router) {
 				pr.Use(RequireAuth)
 				pr.Mount("/playlists", s.playlistH.Routes())
+			})
+		}
+
+		// Direct Audio Ingestion / Upload (Protected)
+		if s.uploadH != nil {
+			r.Group(func(ur chi.Router) {
+				ur.Use(RequireAuth)
+				ur.Post("/upload", s.uploadH.UploadAudio)
 			})
 		}
 

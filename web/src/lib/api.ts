@@ -240,6 +240,36 @@ class ApiClient {
     return this.request<ArtistBiography>(`/artists/${artistId}/biography`)
   }
 
+  // Direct Audio Upload
+  async uploadAudio(files: FileList | File[]): Promise<{ success: boolean; message: string; files: string[]; libraryId: string }> {
+    const formData = new FormData()
+    Array.from(files).forEach((file) => {
+      formData.append('files', file)
+    })
+
+    const headers = new Headers()
+    if (this.token) {
+      headers.set('Authorization', `Bearer ${this.token}`)
+    }
+
+    const response = await fetch(`${BASE_URL}/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+
+    if (!response.ok) {
+      let msg = `Upload failed (HTTP ${response.status})`
+      try {
+        const data = await response.json()
+        if (data.message) msg = data.message
+      } catch {}
+      throw new Error(msg)
+    }
+
+    return response.json()
+  }
+
   getStreamUrl(trackId: string): string {
     return `${BASE_URL}/stream/${trackId}?token=${this.token || ''}`
   }
