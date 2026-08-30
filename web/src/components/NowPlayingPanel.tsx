@@ -16,6 +16,7 @@ import {
   Volume2,
   VolumeX,
   ListMusic,
+  Sliders,
 } from 'lucide-react'
 import * as Slider from '@radix-ui/react-slider'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -23,6 +24,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { usePlayerStore } from '../store/playerStore'
 import { api } from '../lib/api'
 import { AudioHUD } from './AudioHUD'
+import { AudioDSPModal } from './AudioDSPModal'
 
 type PanelMode = 'player' | 'queue' | 'hud'
 
@@ -37,6 +39,7 @@ export const NowPlayingPanel: React.FC = () => {
     isShuffle,
     repeatMode,
     queue,
+    dspState,
     playTrack,
     togglePlay,
     next,
@@ -50,6 +53,7 @@ export const NowPlayingPanel: React.FC = () => {
   } = usePlayerStore()
 
   const [mode, setMode] = useState<PanelMode>('player')
+  const [showDSP, setShowDSP] = useState(false)
 
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '0:00'
@@ -62,7 +66,7 @@ export const NowPlayingPanel: React.FC = () => {
 
   return (
     <aside className="w-80 md:w-96 bg-black/85 backdrop-blur-2xl border-l border-white/[0.06] p-6 flex flex-col justify-between shrink-0 select-none h-full overflow-y-auto relative">
-      {/* Top Segment Mode Switcher (Mic button removed) */}
+      {/* Top Segment Mode Switcher + DSP Studio Button */}
       <div className="flex items-center justify-between mb-5 pb-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-1 liquid-glass-pill p-1 rounded-xl text-xs font-semibold">
           <button
@@ -91,18 +95,21 @@ export const NowPlayingPanel: React.FC = () => {
           </button>
         </div>
 
+        {/* DSP Studio Trigger Button */}
         <button
-          onClick={() => setMode('hud')}
-          title="Interactive Radar HUD"
-          className="p-1.5 text-zinc-400 hover:text-white rounded-lg liquid-glass-pill transition-colors cursor-pointer"
+          onClick={() => setShowDSP(true)}
+          title="Studio DSP Master Engine (Equalizer & Dynamics)"
+          className={`p-1.5 rounded-lg liquid-glass-pill transition-all cursor-pointer flex items-center gap-1 text-xs ${
+            dspState.enabled ? 'text-rose-500 border-rose-500/40 shadow-lg' : 'text-zinc-400 hover:text-white'
+          }`}
         >
-          <Activity className="w-4 h-4 text-rose-500" />
+          <Sliders className="w-4 h-4" />
         </button>
       </div>
 
       <AnimatePresence mode="wait">
         {mode === 'hud' && (
-          <AudioHUD key="hud" onClose={() => setMode('player')} className="w-full my-auto" />
+          <AudioHUD key="hud" onClose={() => setMode('player')} onOpenDSP={() => setShowDSP(true)} className="w-full my-auto" />
         )}
 
         {mode === 'queue' && (
@@ -300,7 +307,7 @@ export const NowPlayingPanel: React.FC = () => {
               </button>
             </div>
 
-            {/* Bottom Actions Row: Heart, Queue, HUD, Volume, Options */}
+            {/* Bottom Actions Row: Heart, Queue, DSP, Volume, Options */}
             <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
               <button
                 onClick={toggleStarCurrentTrack}
@@ -321,11 +328,13 @@ export const NowPlayingPanel: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setMode('hud')}
-                title="Interactive Radar HUD"
-                className="p-2 text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                onClick={() => setShowDSP(true)}
+                title="DSP Studio Audio Engine"
+                className={`p-2 rounded-full transition-colors cursor-pointer ${
+                  dspState.enabled ? 'text-rose-500' : 'text-zinc-500 hover:text-white'
+                }`}
               >
-                <Activity className="w-4 h-4" />
+                <Sliders className="w-4 h-4" />
               </button>
 
               {/* Volume Slider with Mute Button */}
@@ -372,10 +381,10 @@ export const NowPlayingPanel: React.FC = () => {
                       </DropdownMenu.Item>
                     )}
                     <DropdownMenu.Item
-                      onClick={() => setMode('hud')}
+                      onClick={() => setShowDSP(true)}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/[0.08] cursor-pointer outline-none"
                     >
-                      <Activity className="w-3.5 h-3.5" /> Open Radar Telemetry
+                      <Sliders className="w-3.5 h-3.5 text-rose-500" /> Open DSP Master Engine
                     </DropdownMenu.Item>
                   </DropdownMenu.Content>
                 </DropdownMenu.Portal>
@@ -384,6 +393,8 @@ export const NowPlayingPanel: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AudioDSPModal isOpen={showDSP} onClose={() => setShowDSP(false)} />
     </aside>
   )
 }

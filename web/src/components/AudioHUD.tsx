@@ -1,48 +1,25 @@
 ﻿import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { RotateCcw, RotateCw, Play, Pause } from 'lucide-react'
-import { usePlayerStore, getAudio } from '../store/playerStore'
+import { X, Play, Pause, RotateCcw, RotateCw, Sliders } from 'lucide-react'
+import { usePlayerStore } from '../store/playerStore'
+import { audioEngine } from '../lib/audioEngine'
 
 interface AudioHUDProps {
   className?: string
   compact?: boolean
   onClose?: () => void
+  onOpenDSP?: () => void
 }
 
-let audioCtx: AudioContext | null = null
-let analyserNode: AnalyserNode | null = null
-let sourceNode: MediaElementAudioSourceNode | null = null
-
-export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = false, onClose }) => {
-  const { currentTrack, isPlaying, currentTime, duration, togglePlay, seek } = usePlayerStore()
+export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = false, onClose, onOpenDSP }) => {
+  const { currentTrack, isPlaying, currentTime, duration, dspState, togglePlay, seek } = usePlayerStore()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animFrameId = useRef<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
-    try {
-      const audioEl = getAudio()
-      if (!audioCtx && typeof window !== 'undefined') {
-        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-        if (AudioContextClass) {
-          audioCtx = new AudioContextClass()
-          analyserNode = audioCtx.createAnalyser()
-          analyserNode.fftSize = 256
-          analyserNode.smoothingTimeConstant = 0.8
-          try {
-            sourceNode = audioCtx.createMediaElementSource(audioEl)
-            sourceNode.connect(analyserNode)
-            analyserNode.connect(audioCtx.destination)
-          } catch {
-            // Already connected fallback
-          }
-        }
-      }
-      if (audioCtx && audioCtx.state === 'suspended' && isPlaying) {
-        audioCtx.resume()
-      }
-    } catch (e) {
-      console.warn('AudioContext initialization note:', e)
+    if (isPlaying) {
+      audioEngine.resume()
     }
   }, [isPlaying])
 
@@ -51,32 +28,38 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
     const mins = Math.floor((seconds % 3600) / 60)
     const secs = Math.floor(seconds % 60)
     const ms = Math.floor((seconds % 1) * 100)
-    const pad = (n: number) => (n < 10 ? '0' + n : '' + n)
-    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}:${pad(ms)}`
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs
+      .toString()
+      .padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
   }
 
-  // Handle circular scrub interaction (jog wheel)
+  // Polar Coordinate Scrubber Math
   const handleScrubAtPoint = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current
-    if (!canvas || !duration || duration <= 0) return
+    if (!canvas || !duration) return
 
     const rect = canvas.getBoundingClientRect()
-    const x = clientX - rect.left - rect.width / 2
-    const y = clientY - rect.top - rect.height / 2
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
 
-    // Check if clicked in center (within 24px) -> toggle play
-    const dist = Math.sqrt(x * x + y * y)
-    if (dist < 24) {
+    const dx = clientX - centerX
+    const dy = clientY - centerY
+    const dist = Math.hypot(dx, dy)
+
+    // Center play/pause toggle click area
+    const centerHitRadius = (rect.width / 2) * 0.28
+    if (dist <= centerHitRadius) {
       togglePlay()
       return
     }
 
-    // Polar angle calculation
-    let angle = Math.atan2(y, x) + Math.PI / 2
-    if (angle < 0) angle += Math.PI * 2
+    // Polar angle: -PI/2 is top (0 radians)
+    let angle = Math.atan2(dy, dx) + Math.PI / 2
+    if (angle < 0) angle += 2 * Math.PI
 
-    const progressRatio = angle / (Math.PI * 2)
-    seek(progressRatio * duration)
+    const progress = angle / (2 * Math.PI)
+    const targetSeconds = progress * duration
+    seek(Math.min(duration, Math.max(0, targetSeconds)))
   }
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -85,158 +68,123 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
   }
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (isDragging) {
-      handleScrubAtPoint(e.clientX, e.clientY)
-    }
+    if (!isDragging) return
+    handleScrubAtPoint(e.clientX, e.clientY)
   }
 
   const handlePointerUp = () => {
     setIsDragging(false)
   }
 
+  // 60 FPS Visualizer & Interactive Dial Rendering
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const totalTicks = 84
-    let phase = 0
-    const freqData = new Uint8Array(128)
-
     const render = () => {
       const width = canvas.width
       const height = canvas.height
       const centerX = width / 2
       const centerY = height / 2
-      const baseRadius = width * 0.32
+      const maxRadius = width * 0.44
+      const progress = duration > 0 ? currentTime / duration : 0
 
       ctx.clearRect(0, 0, width, height)
 
-      let hasRealFreqs = false
-      if (analyserNode && isPlaying) {
-        analyserNode.getByteFrequencyData(freqData)
-        hasRealFreqs = freqData.some((v) => v > 0)
+      // 1. Fetch Real-time Audio Frequency Data from Studio DSP Engine
+      const analyser = audioEngine.getAnalyser()
+      let freqData = new Uint8Array(64)
+      if (analyser && isPlaying) {
+        freqData = new Uint8Array(analyser.frequencyBinCount)
+        analyser.getByteFrequencyData(freqData)
       }
 
-      // Calculate progress angle (0 to 2*PI starting at top -PI/2)
-      const progressFraction = duration > 0 ? currentTime / duration : 0
-      const currentProgressAngle = progressFraction * Math.PI * 2 - Math.PI / 2
+      // 2. Concentric Radar Rings
+      const ringRadii = [0.22, 0.44, 0.68, 0.90, 1.0]
+      ringRadii.forEach((factor, idx) => {
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, maxRadius * factor, 0, Math.PI * 2)
+        ctx.strokeStyle = idx === ringRadii.length - 1 ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.05)'
+        ctx.lineWidth = 1
+        ctx.stroke()
+      })
 
-      // 1. Outer dashed concentric guide ring
+      // 3. Compass Crosshairs
       ctx.beginPath()
-      ctx.arc(centerX, centerY, baseRadius + 15, 0, Math.PI * 2)
+      ctx.moveTo(centerX, centerY - maxRadius * 1.05)
+      ctx.lineTo(centerX, centerY + maxRadius * 1.05)
+      ctx.moveTo(centerX - maxRadius * 1.05, centerY)
+      ctx.lineTo(centerX + maxRadius * 1.05, centerY)
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
       ctx.lineWidth = 1
-      ctx.setLineDash([2, 4])
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // 2. Progress Arc along the radar perimeter
-      if (progressFraction > 0) {
-        ctx.beginPath()
-        ctx.arc(centerX, centerY, baseRadius + 15, -Math.PI / 2, currentProgressAngle)
-        ctx.strokeStyle = '#ff3b30'
-        ctx.lineWidth = 2
-        ctx.stroke()
-      }
-
-      // 3. Inner circular target ring
-      ctx.beginPath()
-      ctx.arc(centerX, centerY, baseRadius - 12, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
-      ctx.lineWidth = 1
       ctx.stroke()
 
-      // 4. Center interactive boundary ring
-      ctx.beginPath()
-      ctx.arc(centerX, centerY, 20, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
-      ctx.fill()
-      ctx.strokeStyle = isPlaying ? 'rgba(255, 59, 48, 0.4)' : 'rgba(255, 255, 255, 0.18)'
-      ctx.lineWidth = 1
-      ctx.stroke()
+      // 4. Circular Audio Reactive Spectrum Bars
+      const numTicks = 64
+      for (let i = 0; i < numTicks; i++) {
+        const angle = (i / numTicks) * Math.PI * 2 - Math.PI / 2
+        const rawVal = isPlaying ? (freqData[i % freqData.length] || 0) / 255 : 0.08
+        const dynamicLen = maxRadius * 0.12 + rawVal * (maxRadius * 0.28)
 
-      // 5. Render radial tick marks with audio waveform spikes
-      phase += isPlaying ? 0.04 : 0.005
+        const innerR = maxRadius * 0.72
+        const outerR = innerR + dynamicLen
 
-      for (let i = 0; i < totalTicks; i++) {
-        const angle = (i / totalTicks) * Math.PI * 2 - Math.PI / 2
-        const cos = Math.cos(angle)
-        const sin = Math.sin(angle)
+        const x1 = centerX + Math.cos(angle) * innerR
+        const y1 = centerY + Math.sin(angle) * innerR
+        const x2 = centerX + Math.cos(angle) * outerR
+        const y2 = centerY + Math.sin(angle) * outerR
 
-        let tickHeight = 4
-        let alpha = 0.35
-
-        if (isPlaying) {
-          if (hasRealFreqs) {
-            const freqIdx = Math.floor((i / totalTicks) * 64)
-            const rawVal = freqData[freqIdx] || 0
-            const normalized = rawVal / 255
-            tickHeight = 4 + normalized * 22
-            alpha = 0.35 + normalized * 0.65
-          } else {
-            const wave1 = Math.sin(i * 0.35 + phase)
-            const wave2 = Math.cos(i * 0.7 - phase * 1.5)
-            const combined = Math.max(0, (wave1 + wave2 * 0.7) / 1.7)
-            tickHeight = 4 + combined * 18
-            alpha = 0.4 + combined * 0.6
-          }
-        } else {
-          if (i % 6 === 0) {
-            tickHeight = 8
-            alpha = 0.6
-          }
-        }
-
-        const startR = baseRadius
-        const endR = baseRadius + tickHeight
-
-        const x1 = centerX + cos * startR
-        const y1 = centerY + sin * startR
-        const x2 = centerX + cos * endR
-        const y2 = centerY + sin * endR
+        const isScrubbed = i / numTicks <= progress
 
         ctx.beginPath()
         ctx.moveTo(x1, y1)
         ctx.lineTo(x2, y2)
-
-        // Highlight ticks behind the current scrubber position
-        if (angle <= currentProgressAngle) {
-          ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, alpha + 0.3)})`
-        } else {
-          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`
-        }
-
-        ctx.lineWidth = 1.25
+        ctx.strokeStyle = isScrubbed
+          ? 'rgba(255, 59, 48, 0.85)'
+          : isPlaying
+          ? 'rgba(255, 255, 255, 0.35)'
+          : 'rgba(255, 255, 255, 0.12)'
+        ctx.lineWidth = isScrubbed ? 2 : 1.5
         ctx.stroke()
       }
 
-      // 6. Playhead needle / indicator on the scrub ring
-      const needleCos = Math.cos(currentProgressAngle)
-      const needleSin = Math.sin(currentProgressAngle)
-      ctx.beginPath()
-      ctx.arc(
-        centerX + needleCos * (baseRadius + 15),
-        centerY + needleSin * (baseRadius + 15),
-        3.5,
-        0,
-        Math.PI * 2
-      )
-      ctx.fillStyle = '#ff3b30'
-      ctx.shadowColor = '#ff3b30'
-      ctx.shadowBlur = 10
-      ctx.fill()
-      ctx.shadowBlur = 0
+      // 5. Active Playhead Arc
+      if (duration > 0) {
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, maxRadius * 0.98, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2)
+        ctx.strokeStyle = '#ff3b30'
+        ctx.lineWidth = 2.5
+        ctx.stroke()
 
-      // 7. Center Red Live Status / Play-Pause Dot (matching Image 1)
+        // Pointer Needle
+        const needleAngle = -Math.PI / 2 + progress * Math.PI * 2
+        const needleX = centerX + Math.cos(needleAngle) * (maxRadius * 0.98)
+        const needleY = centerY + Math.sin(needleAngle) * (maxRadius * 0.98)
+
+        ctx.beginPath()
+        ctx.arc(needleX, needleY, 4, 0, Math.PI * 2)
+        ctx.fillStyle = '#ffffff'
+        ctx.fill()
+        ctx.strokeStyle = '#ff3b30'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+
+      // 6. Center Tactical Recording Dot (Play / Pause Indicator)
       ctx.beginPath()
-      ctx.arc(centerX, centerY, 6.5, 0, Math.PI * 2)
-      ctx.fillStyle = isPlaying ? '#ff3b30' : 'rgba(255, 255, 255, 0.7)'
-      ctx.shadowColor = isPlaying ? '#ff3b30' : 'rgba(255, 255, 255, 0.4)'
-      ctx.shadowBlur = isPlaying ? 16 : 8
+      ctx.arc(centerX, centerY, 7, 0, Math.PI * 2)
+      ctx.fillStyle = isPlaying ? '#ff3b30' : 'rgba(255, 255, 255, 0.4)'
       ctx.fill()
-      ctx.shadowBlur = 0
+
+      if (isPlaying) {
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, 13, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(255, 59, 48, 0.4)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
 
       animFrameId.current = requestAnimationFrame(render)
     }
@@ -244,38 +192,52 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
     render()
 
     return () => {
-      if (animFrameId.current) {
-        cancelAnimationFrame(animFrameId.current)
-      }
+      if (animFrameId.current) cancelAnimationFrame(animFrameId.current)
     }
-  }, [isPlaying, currentTime, duration])
+  }, [isPlaying, duration, currentTime])
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
-      className={`liquid-glass rounded-2xl p-5 shadow-2xl flex flex-col justify-between select-none text-zinc-300 font-hud ${className}`}
+      className={`liquid-glass rounded-[28px] p-5 shadow-2xl relative select-none font-hud ${className}`}
     >
-      {/* Top Header: W - 01 and AUDIO_IN matching Image 1 */}
-      <div className="flex items-center justify-between text-[11px] tracking-widest text-zinc-400 border-b border-white/[0.06] pb-3">
-        <span className="font-semibold text-white">W - 01</span>
+      {/* Top Telemetry Header */}
+      <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 mb-4 text-xs">
         <div className="flex items-center gap-2">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse-dot" />
-          <span className="text-zinc-400 font-medium">AUDIO_IN</span>
+          <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-rose-500 animate-pulse' : 'bg-zinc-600'}`} />
+          <span className="text-white font-bold tracking-widest">
+            {isPlaying ? 'MONITORING AUDIO' : 'STANDBY'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* DSP Preset Badge with Click to Tune */}
+          {onOpenDSP && (
+            <button
+              onClick={onOpenDSP}
+              className="flex items-center gap-1 px-2.5 py-0.5 rounded-full liquid-glass-pill text-[10px] text-rose-400 font-bold hover:bg-white/[0.1] transition-all cursor-pointer"
+              title="Click to tune 10-band EQ & master dynamics"
+            >
+              <Sliders className="w-3 h-3 text-rose-500" />
+              <span>{dspState.enabled ? dspState.preset.toUpperCase() : 'DSP OFF'}</span>
+            </button>
+          )}
+
           {onClose && (
             <button
               onClick={onClose}
-              className="ml-2 text-zinc-500 hover:text-white transition-colors cursor-pointer"
+              className="p-1 text-zinc-400 hover:text-white rounded-full liquid-glass-pill transition-colors cursor-pointer"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Center Interactive Oscilloscope Radar Jog Wheel */}
-      <div className="relative flex flex-col items-center justify-center my-3">
+      {/* Interactive Circular Jog Wheel & Radar Canvas */}
+      <div className="relative flex flex-col items-center justify-center my-2">
         <canvas
           ref={canvasRef}
           width={compact ? 200 : 260}

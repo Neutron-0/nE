@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Track } from '../types'
 import { api } from '../lib/api'
+import { audioEngine, type PresetName, type DSPState } from '../lib/audioEngine'
 
 interface PlayerState {
   currentTrack: Track | null
@@ -14,6 +15,9 @@ interface PlayerState {
   queue: Track[]
   queueIndex: number
   hasScrobbled: boolean
+
+  // Studio Audiophile DSP State
+  dspState: DSPState
 
   // Actions
   playTrack: (track: Track, newQueue?: Track[]) => void
@@ -29,6 +33,13 @@ interface PlayerState {
   toggleRepeat: () => void
   addToQueue: (track: Track) => void
   toggleStarCurrentTrack: () => Promise<void>
+
+  // DSP Actions
+  setDspEnabled: (enabled: boolean) => void
+  setDspPreset: (preset: PresetName) => void
+  setPreAmpGain: (gain: number) => void
+  setEQBand: (index: number, gain: number) => void
+  setCompressorEnabled: (enabled: boolean) => void
 }
 
 // Singleton Audio Element
@@ -59,8 +70,38 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     queueIndex: -1,
     hasScrobbled: false,
 
+    dspState: audioEngine.getState(),
+
+    setDspEnabled: (enabled: boolean) => {
+      audioEngine.setEnabled(enabled)
+      set({ dspState: audioEngine.getState() })
+    },
+
+    setDspPreset: (preset: PresetName) => {
+      audioEngine.setPreset(preset)
+      set({ dspState: audioEngine.getState() })
+    },
+
+    setPreAmpGain: (gain: number) => {
+      audioEngine.setPreAmpGain(gain)
+      set({ dspState: audioEngine.getState() })
+    },
+
+    setEQBand: (index: number, gain: number) => {
+      audioEngine.setEQBand(index, gain)
+      set({ dspState: audioEngine.getState() })
+    },
+
+    setCompressorEnabled: (enabled: boolean) => {
+      audioEngine.setCompressorEnabled(enabled)
+      set({ dspState: audioEngine.getState() })
+    },
+
     playTrack: (track: Track, newQueue?: Track[]) => {
       const a = getAudio()
+      audioEngine.init(a)
+      audioEngine.resume()
+
       const streamUrl = api.getStreamUrl(track.id)
 
       let queue = get().queue
@@ -127,6 +168,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     togglePlay: () => {
       const a = getAudio()
+      audioEngine.init(a)
+      audioEngine.resume()
+
       if (get().isPlaying) {
         a.pause()
         set({ isPlaying: false })
@@ -147,6 +191,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     resume: () => {
       const a = getAudio()
+      audioEngine.init(a)
+      audioEngine.resume()
       if (a.src) {
         a.play().then(() => set({ isPlaying: true }))
       }
@@ -162,35 +208,25 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
         return
       }
 
-      let nextIndex = queueIndex + 1
-      if (nextIndex >= queue.length) {
-        if (repeatMode === 'all') {
-          nextIndex = 0
-        } else {
-          set({ isPlaying: false })
-          return
-        }
+      if (queueIndex < queue.length - 1) {
+        playTrack(queue[queueIndex + 1])
+      } else if (repeatMode === 'all') {
+        playTrack(queue[0])
       }
-
-      playTrack(queue[nextIndex])
     },
 
     previous: () => {
-      const { queue, queueIndex, playTrack, currentTime } = get()
-      const a = getAudio()
-
+      const { queue, queueIndex, playTrack, currentTime, seek } = get()
       if (currentTime > 3) {
-        a.currentTime = 0
-        set({ currentTime: 0 })
+        seek(0)
         return
       }
 
-      if (queue.length === 0) return
-      let prevIndex = queueIndex - 1
-      if (prevIndex < 0) {
-        prevIndex = queue.length - 1
+      if (queueIndex > 0) {
+        playTrack(queue[queueIndex - 1])
+      } else if (queue.length > 0) {
+        playTrack(queue[queue.length - 1])
       }
-      playTrack(queue[prevIndex])
     },
 
     seek: (seconds: number) => {
@@ -201,43 +237,53 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     setVolume: (volume: number) => {
       const a = getAudio()
-      const safeVol = Math.max(0, Math.min(1, volume))
-      a.volume = safeVol
-      localStorage.setItem('ne_volume', safeVol.toString())
-      set({ volume: safeVol, isMuted: safeVol === 0 })
+      const clamped = Math.max(0, Math.min(1, volume))
+      a.volume = clamped
+      localStorage.setItem('ne_volume', clamped.toString())
+      set({ volume: clamped, isMuted: clamped === 0 })
     },
 
     toggleMute: () => {
       const a = getAudio()
-      const isMuted = !get().isMuted
-      a.volume = isMuted ? 0 : get().volume
-      set({ isMuted })
+      const { isMuted, volume } = get()
+      if (isMuted) {
+        a.volume = volume > 0 ? volume : 0.8
+        set({ isMuted: false })
+      } else {
+        a.volume = 0
+        set({ isMuted: true })
+      }
     },
 
     toggleShuffle: () => {
-      set({ isShuffle: !get().isShuffle })
+      set((state) => ({ isShuffle: !state.isShuffle }))
     },
 
     toggleRepeat: () => {
-      const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one']
-      const currentIdx = modes.indexOf(get().repeatMode)
-      const nextMode = modes[(currentIdx + 1) % modes.length]
-      set({ repeatMode: nextMode })
+      set((state) => {
+        if (state.repeatMode === 'off') return { repeatMode: 'all' }
+        if (state.repeatMode === 'all') return { repeatMode: 'one' }
+        return { repeatMode: 'off' }
+      })
     },
 
     addToQueue: (track: Track) => {
-      set({ queue: [...get().queue, track] })
+      set((state) => ({ queue: [...state.queue, track] }))
     },
 
     toggleStarCurrentTrack: async () => {
       const { currentTrack } = get()
       if (!currentTrack) return
-      const nextStarred = !currentTrack.isStarred
+
+      const newStarred = !currentTrack.isStarred
       try {
-        await api.starItem('track', currentTrack.id, nextStarred)
-        set({ currentTrack: { ...currentTrack, isStarred: nextStarred } })
+        await api.starItem('track', currentTrack.id, newStarred)
+        set((state) => ({
+          currentTrack: state.currentTrack ? { ...state.currentTrack, isStarred: newStarred } : null,
+          queue: state.queue.map((t) => (t.id === currentTrack.id ? { ...t, isStarred: newStarred } : t)),
+        }))
       } catch (err) {
-        console.error('Star failed:', err)
+        console.error('Failed to star track:', err)
       }
     },
   }
@@ -248,17 +294,15 @@ function updateMediaSession(track: Track) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
       artist: track.rawArtist || track.albumArtist || 'Unknown Artist',
-      album: track.albumTitle || 'Unknown Album',
+      album: track.albumTitle || 'nE Audio',
       artwork: [
-        {
-          src: api.getArtworkUrl('track', track.id, 512),
-          sizes: '512x512',
-          type: 'image/jpeg',
-        },
+        { src: api.getArtworkUrl('track', track.id, 96), sizes: '96x96', type: 'image/jpeg' },
+        { src: api.getArtworkUrl('track', track.id, 256), sizes: '256x256', type: 'image/jpeg' },
+        { src: api.getArtworkUrl('track', track.id, 512), sizes: '512x512', type: 'image/jpeg' },
       ],
     })
 
-    navigator.mediaSession.setActionHandler('play', () => usePlayerStore.getState().resume())
+    navigator.mediaSession.setActionHandler('play', () => usePlayerStore.getState().togglePlay())
     navigator.mediaSession.setActionHandler('pause', () => usePlayerStore.getState().pause())
     navigator.mediaSession.setActionHandler('previoustrack', () => usePlayerStore.getState().previous())
     navigator.mediaSession.setActionHandler('nexttrack', () => usePlayerStore.getState().next())
