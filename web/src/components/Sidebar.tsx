@@ -1,14 +1,13 @@
-﻿import React from 'react'
+import React from 'react'
+import { motion } from 'motion/react'
 import {
-  Disc,
-  Music,
-  User as UserIcon,
+  Home,
+  Compass,
+  Library,
   Settings,
   LogOut,
-  Sparkles,
   Heart,
   History,
-  ListMusic,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 
@@ -30,125 +29,147 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
   const { user, logout } = useAuthStore()
 
-  const mainNav = [
-    { id: 'albums' as ViewType, label: 'Albums', icon: Disc },
-    { id: 'artists' as ViewType, label: 'Artists', icon: UserIcon },
-    { id: 'tracks' as ViewType, label: 'Tracks', icon: Music },
+  // Primary navigation matching Image 2
+  const menuItems = [
+    { id: 'albums' as ViewType, label: 'Home', icon: Home },
+    { id: 'tracks' as ViewType, label: 'Explore', icon: Compass },
+    { id: 'artists' as ViewType, label: 'Library', icon: Library },
   ]
 
-  const libraryNav = [
-    { id: 'playlists' as ViewType, label: 'Playlists', icon: ListMusic },
-    { id: 'favorites' as ViewType, label: 'Favorites', icon: Heart },
-    { id: 'history' as ViewType, label: 'History', icon: History },
+  // Playlists matching Image 2
+  const defaultPlaylists = [
+    { name: 'After Hours Mix', id: 'playlists' },
+    { name: 'Productivity Flows', id: 'playlists' },
+    { name: 'Late Night Jazz', id: 'playlists' },
+    { name: 'Discovery Daily', id: 'playlists' },
   ]
 
   return (
-    <aside className="w-64 bg-zinc-950/80 border-r border-zinc-800/60 flex flex-col justify-between p-4 shrink-0 backdrop-blur-md">
+    <aside className="w-56 md:w-60 bg-[#191716]/95 border-r border-[#302c28]/80 p-5 flex flex-col justify-between shrink-0 select-none h-full">
       <div className="overflow-y-auto">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3 px-3 py-4 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
-            <span className="font-black text-xl text-black tracking-tight font-mono">nE</span>
+        {/* Brand Logo matching nE */}
+        <div className="flex items-center gap-3 px-2 py-3 mb-6">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
+            <span className="font-black text-lg text-black font-hud">nE</span>
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-none tracking-tight text-white flex items-center gap-1.5">
-              nE Audio <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <h1 className="font-extrabold text-base tracking-tight text-white leading-none">
+              nE Audio
             </h1>
-            <span className="text-xs text-zinc-400 font-medium">Personal Music Server</span>
+            <span className="text-[11px] text-zinc-400 font-medium">Personal Streamer</span>
           </div>
         </div>
 
-        {/* Discovery Menu */}
-        <div className="mb-6">
-          <p className="px-3 text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-2">
-            Catalog
+        {/* Section 1: MENU matching Image 2 */}
+        <div className="mb-8">
+          <p className="px-3 text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 font-hud">
+            MENU
           </p>
           <nav className="space-y-1">
-            {mainNav.map((item) => {
+            {menuItems.map((item) => {
               const Icon = item.icon
-              const isActive = currentView === item.id || (currentView === 'album-detail' && item.id === 'albums')
+              const isActive =
+                currentView === item.id || (item.id === 'albums' && currentView === 'album-detail')
+
               return (
                 <button
                   key={item.id}
                   onClick={() => onViewChange(item.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
+                  className={`relative w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+                    isActive ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-rose-400' : 'text-zinc-400'}`} />
-                  {item.label}
+                  {/* Sliding active pill indicator (Image 2 signature) */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-pill"
+                      className="absolute inset-0 bg-[#2d2824] rounded-xl border border-white/5 shadow-sm -z-0"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <Icon className={`w-4 h-4 relative z-10 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
+                  <span className="relative z-10">{item.label}</span>
                 </button>
               )
             })}
           </nav>
         </div>
 
-        {/* Personal Library Section */}
+        {/* Section 2: YOUR PLAYLISTS matching Image 2 */}
         <div className="mb-6">
-          <p className="px-3 text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-2">
-            My Collection
+          <p className="px-3 text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 font-hud">
+            YOUR PLAYLISTS
           </p>
           <nav className="space-y-1">
-            {libraryNav.map((item) => {
-              const Icon = item.icon
-              const isActive = currentView === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onViewChange(item.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-rose-400' : 'text-zinc-400'}`} />
-                  {item.label}
-                </button>
-              )
-            })}
+            {defaultPlaylists.map((pl, idx) => (
+              <button
+                key={idx}
+                onClick={() => onViewChange('playlists')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl text-sm transition-colors truncate cursor-pointer ${
+                  currentView === 'playlists' && idx === 0
+                    ? 'text-zinc-200 font-semibold'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#25221f]/50'
+                }`}
+              >
+                {pl.name}
+              </button>
+            ))}
           </nav>
         </div>
 
-        {/* Settings */}
-        <div>
-          <nav className="space-y-1">
-            <button
-              onClick={() => onViewChange('settings')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                currentView === 'settings'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
-              }`}
-            >
-              <Settings className={`w-4 h-4 ${currentView === 'settings' ? 'text-rose-400' : 'text-zinc-400'}`} />
-              Settings
-            </button>
-          </nav>
+        {/* Favorites & History shortcuts */}
+        <div className="pt-2 border-t border-white/5">
+          <button
+            onClick={() => onViewChange('favorites')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+              currentView === 'favorites' ? 'text-rose-400 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Heart className="w-3.5 h-3.5" />
+            <span>Favorites</span>
+          </button>
+          <button
+            onClick={() => onViewChange('history')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+              currentView === 'history' ? 'text-white font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>History</span>
+          </button>
         </div>
       </div>
 
       {/* User Session Footer */}
-      <div className="border-t border-zinc-800/60 pt-4 px-2">
+      <div className="pt-4 border-t border-[#302c28]/80 px-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-semibold text-zinc-300">
-              {user?.username.charAt(0).toUpperCase()}
+            <div className="w-8 h-8 rounded-full bg-[#292522] border border-white/10 flex items-center justify-center text-xs font-bold text-zinc-300">
+              {user?.username.charAt(0).toUpperCase() || 'N'}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.username}</p>
-              <p className="text-xs text-zinc-400 truncate">{user?.isAdmin ? 'Administrator' : 'Listener'}</p>
+              <p className="text-sm font-semibold text-white truncate">{user?.username || 'neo'}</p>
+              <p className="text-[11px] text-zinc-400 truncate">
+                {user?.isAdmin ? 'Administrator' : 'Listener'}
+              </p>
             </div>
           </div>
-          <button
-            onClick={() => logout()}
-            title="Sign out"
-            className="p-1.5 text-zinc-400 hover:text-rose-400 hover:bg-zinc-800/80 rounded-md transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onViewChange('settings')}
+              title="Settings"
+              className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => logout()}
+              title="Sign out"
+              className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

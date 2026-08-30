@@ -1,30 +1,72 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   color-scheme: dark;
+  --bg-root: #181615;
+  --bg-card: #221f1d;
+  --bg-surface: #2b2724;
+  --border-subtle: #36312d;
+  --accent-coral: #ff453a;
+  --accent-gold: #e5a93c;
 }
 
 body {
   margin: 0;
-  background-color: #09090b;
-  color: #f4f4f5;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #161413;
+  color: #f5f3f0;
+  font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
   user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-hud {
+  font-family: 'JetBrains Mono', 'Geist Mono', monospace;
+}
+
+/* Vinyl record concentric grooves */
+.vinyl-grooves {
+  background: repeating-radial-gradient(
+    circle at center,
+    #111111 0px,
+    #111111 2px,
+    #1f1f22 3px,
+    #111111 4px
+  );
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9), 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+/* Radar audio HUD animation */
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.animate-radar {
+  animation: radar-sweep 8s linear infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: #332f2b;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #47423d;
 }

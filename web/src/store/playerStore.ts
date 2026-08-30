@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import type { Track } from '../types'
 import { api } from '../lib/api'
 
@@ -34,10 +34,11 @@ interface PlayerState {
 // Singleton Audio Element
 let audio: HTMLAudioElement | null = null
 
-function getAudio(): HTMLAudioElement {
+export function getAudio(): HTMLAudioElement {
   if (!audio) {
     audio = new Audio()
     audio.preload = 'auto'
+    audio.crossOrigin = 'anonymous'
   }
   return audio
 }
