@@ -1,4 +1,4 @@
-﻿package scanner
+package scanner
 
 import (
 	"context"
@@ -18,24 +18,29 @@ type CatalogScanner interface {
 	TriggerScan(ctx context.Context, libraryID string) (*ScanProgress, error)
 }
 
+type libFolderState struct {
+	count       int
+	latestMTime int64
+}
+
 type LibraryWatcher struct {
 	scanner   CatalogScanner
 	interval  time.Duration
 	logger    *slog.Logger
-	lastState map[string]int // libraryID -> file count
+	lastState map[string]libFolderState
 	mu        sync.Mutex
 	stopCh    chan struct{}
 }
 
 func NewLibraryWatcher(scanner CatalogScanner, interval time.Duration, logger *slog.Logger) *LibraryWatcher {
 	if interval <= 0 {
-		interval = 30 * time.Second
+		interval = 60 * time.Second
 	}
 	return &LibraryWatcher{
 		scanner:   scanner,
 		interval:  interval,
 		logger:    logger,
-		lastState: make(map[string]int),
+		lastState: make(map[string]libFolderState),
 		stopCh:    make(chan struct{}),
 	}
 }
@@ -70,26 +75,26 @@ func (w *LibraryWatcher) checkLibraries(ctx context.Context) {
 	}
 
 	for _, lib := range libs {
-		currentCount := w.countAudioFiles(lib.Path)
+		currentState := w.inspectFolder(lib.Path)
 		w.mu.Lock()
-		prevCount, exists := w.lastState[lib.ID]
-		w.lastState[lib.ID] = currentCount
+		prevState, exists := w.lastState[lib.ID]
+		w.lastState[lib.ID] = currentState
 		w.mu.Unlock()
 
 		if !exists {
 			// First observation: if track count in library differs, trigger scan
-			if currentCount > 0 && lib.TrackCount == 0 {
-				w.logger.Info("LibraryWatcher: Detected unindexed tracks on boot, triggering scan", "library", lib.Name, "files", currentCount)
+			if currentState.count > 0 && lib.TrackCount == 0 {
+				w.logger.Info("LibraryWatcher: Detected unindexed tracks on boot, triggering scan", "library", lib.Name, "files", currentState.count)
 				_, _ = w.scanner.TriggerScan(ctx, lib.ID)
 			}
-		} else if currentCount != prevCount {
-			w.logger.Info("LibraryWatcher: Detected file changes in library folder", "library", lib.Name, "oldCount", prevCount, "newCount", currentCount)
+		} else if currentState.count != prevState.count || currentState.latestMTime != prevState.latestMTime {
+			w.logger.Info("LibraryWatcher: Detected file changes in library folder", "library", lib.Name, "oldCount", prevState.count, "newCount", currentState.count)
 			_, _ = w.scanner.TriggerScan(ctx, lib.ID)
 		}
 	}
 }
 
-func (w *LibraryWatcher) countAudioFiles(root string) int {
+func (w *LibraryWatcher) inspectFolder(root string) libFolderState {
 	// Candidate fallbacks if path is relative or Linux/Windows mismatch
 	resolved := root
 	if _, err := os.Stat(resolved); os.IsNotExist(err) {
@@ -102,15 +107,20 @@ func (w *LibraryWatcher) countAudioFiles(root string) int {
 		}
 	}
 
-	count := 0
+	state := libFolderState{}
 	_ = filepath.WalkDir(resolved, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d == nil || d.IsDir() {
 			return nil
 		}
 		if media.IsSupportedAudioFile(path) {
-			count++
+			state.count++
+			if info, err := d.Info(); err == nil {
+				if mtime := info.ModTime().UnixNano(); mtime > state.latestMTime {
+					state.latestMTime = mtime
+				}
+			}
 		}
 		return nil
 	})
-	return count
+	return state
 }
