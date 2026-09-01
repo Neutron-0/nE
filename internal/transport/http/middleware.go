@@ -1,8 +1,10 @@
-﻿package http
+package http
 
 import (
 	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,11 +25,16 @@ func SecurityHeadersMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// CORSMiddleware configures cross-origin request handling.
+// CORSMiddleware configures cross-origin request handling safely.
 func CORSMiddleware(allowAll bool) func(http.Handler) http.Handler {
-	allowedOrigins := []string{"*"}
-	if !allowAll {
-		allowedOrigins = []string{"http://localhost:*", "http://127.0.0.1:*"}
+	allowedOrigins := []string{"http://localhost:*", "http://127.0.0.1:*", "https://localhost:*"}
+	allowCredentials := true
+
+	if allowAll {
+		// When unrestricted origin access is requested in local/dev setup,
+		// allow wildcard without credentials (W3C standard).
+		allowedOrigins = []string{"*"}
+		allowCredentials = false
 	}
 
 	return cors.Handler(cors.Options{
@@ -35,7 +42,7 @@ func CORSMiddleware(allowAll bool) func(http.Handler) http.Handler {
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Range"},
 		ExposedHeaders:   []string{"Link", "Content-Length", "Content-Range", "Accept-Ranges", "ETag"},
-		AllowCredentials: true,
+		AllowCredentials: allowCredentials,
 		MaxAge:           300,
 	})
 }
@@ -83,26 +90,49 @@ type IPRateLimiter struct {
 }
 
 func NewIPRateLimiter(limit int, windowSec int) *IPRateLimiter {
-	return &IPRateLimiter{
+	limiter := &IPRateLimiter{
 		requests: make(map[string][]time.Time),
 		limit:    limit,
 		window:   time.Duration(windowSec) * time.Second,
 	}
+
+	// Periodically evict stale IPs to prevent memory leak
+	go func() {
+		ticker := time.NewTicker(time.Duration(windowSec*2) * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			limiter.mu.Lock()
+			cutoff := time.Now().Add(-limiter.window)
+			for ip, times := range limiter.requests {
+				var valid []time.Time
+				for _, t := range times {
+					if t.After(cutoff) {
+						valid = append(valid, t)
+					}
+				}
+				if len(valid) == 0 {
+					delete(limiter.requests, ip)
+				} else {
+					limiter.requests[ip] = valid
+				}
+			}
+			limiter.mu.Unlock()
+		}
+	}()
+
+	return limiter
 }
 
 func (rl *IPRateLimiter) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := r.RemoteAddr
-			if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-				ip = forwarded
-			}
+			ip := extractClientIP(r)
 
 			rl.mu.Lock()
 			now := time.Now()
 			cutoff := now.Add(-rl.window)
 
-			// Purge expired entries
+			// Purge expired entries for this IP
 			var valid []time.Time
 			for _, t := range rl.requests[ip] {
 				if t.After(cutoff) {
@@ -130,4 +160,19 @@ func (rl *IPRateLimiter) Middleware() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func extractClientIP(r *http.Request) string {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		ip = r.RemoteAddr
+	}
+	// Only inspect X-Forwarded-For if RemoteAddr is loopback or trusted private subnet
+	if ip == "127.0.0.1" || ip == "::1" || strings.HasPrefix(ip, "10.") || strings.HasPrefix(ip, "172.") || strings.HasPrefix(ip, "192.168.") {
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			parts := strings.Split(forwarded, ",")
+			return strings.TrimSpace(parts[0])
+		}
+	}
+	return ip
 }

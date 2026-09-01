@@ -96,20 +96,20 @@ func DefaultConfig() *Config {
 			LogLevel:        "info",
 			LogFormat:       "text",
 			ReadTimeout:     30 * time.Second,
-			WriteTimeout:    30 * time.Second,
+			WriteTimeout:    0, // 0 disables write timeout to support long RFC 7233 audio streams and SSE
 			ShutdownTimeout: 10 * time.Second,
 			TrustedProxies:  []string{"127.0.0.1/32", "::1/128"},
-			CORSAllowAll:    true,
+			CORSAllowAll:    false,
 		},
 		Database: DatabaseConfig{
 			Path:        filepath.Join("data", "ne.db"),
 			BusyTimeout: 5000,
 		},
 		Auth: AuthConfig{
-			JWTSecretKey:       "ne-audio-streaming-production-secret-key-32b",
-			AccessTokenExpiry:  7 * 24 * time.Hour,
+			JWTSecretKey:       "", // Left empty by default to trigger auto-generation of cryptographically secure persistent 32-byte key
+			AccessTokenExpiry:  24 * time.Hour,
 			RefreshTokenExpiry: 30 * 24 * time.Hour,
-			RateLimitRequests:  10,
+			RateLimitRequests:  20,
 			RateLimitWindowSec: 60,
 		},
 		Scanner: ScannerConfig{

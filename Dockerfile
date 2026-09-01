@@ -22,20 +22,20 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/ne ./cmd/ne
 
 # Stage 3: Minimal Production Runtime
 FROM alpine:3.21
-RUN apk add --no-cache ffmpeg ca-certificates tzdata
+RUN apk add --no-cache ffmpeg ca-certificates tzdata wget
 WORKDIR /app
 
-# Create standard directories
-RUN mkdir -p /config /data /cache/artwork /cache/transcode /music /app/music
+# Create unprivileged user and directories
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser && \
+    mkdir -p /config /data /cache/artwork /cache/transcode /music && \
+    chown -R appuser:appuser /config /data /cache /music /app
 
 # Copy compiled backend binary
 COPY --from=backend-builder /app/ne /usr/local/bin/ne
+RUN chmod +x /usr/local/bin/ne
 
-# Copy bundled music collection, database snapshot, and config keys into runtime container
-COPY music/ /music/
-COPY music/ /app/music/
-COPY data/ /data/
-COPY config/ /config/
+USER appuser
 
 EXPOSE 4533
 
@@ -46,7 +46,6 @@ ENV NE_PORT=4533 \
     NE_CACHE_DIR=/cache \
     NE_MUSIC_DIR=/music \
     NE_DB_PATH=/data/ne.db \
-    NE_JWT_SECRET="ne-audio-streaming-production-secret-key-32b" \
     NE_STREAMING_MAX_CONCURRENT_TRANSCODES=1
 
 ENTRYPOINT ["/usr/local/bin/ne"]

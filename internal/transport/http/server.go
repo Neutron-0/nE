@@ -116,7 +116,7 @@ func (s *Server) setupMiddlewares() {
 	s.router.Use(middleware.Recoverer)
 	s.router.Use(SecurityHeadersMiddleware())
 	s.router.Use(CORSMiddleware(s.cfg.Server.CORSAllowAll))
-	s.router.Use(middleware.Compress(5))
+	s.router.Use(middleware.Compress(5, "text/*", "application/json", "application/javascript", "application/xml"))
 
 	if s.jwtManager != nil {
 		s.router.Use(AuthMiddleware(s.jwtManager))
@@ -138,9 +138,13 @@ func (s *Server) setupRoutes() {
 			r.Get("/diagnostics", s.healthH.Diagnostics)
 		})
 
-		// Auth Endpoints
+		// Auth Endpoints (Protected by Rate Limiter)
 		if s.authH != nil {
-			r.Mount("/auth", s.authH.Routes())
+			rateLimiter := NewIPRateLimiter(s.cfg.Auth.RateLimitRequests, s.cfg.Auth.RateLimitWindowSec)
+			r.Group(func(ar chi.Router) {
+				ar.Use(rateLimiter.Middleware())
+				ar.Mount("/auth", s.authH.Routes())
+			})
 		}
 
 		// Artwork Endpoints (Public/Protected with Token)
@@ -169,7 +173,7 @@ func (s *Server) setupRoutes() {
 			})
 		}
 
-		// Audio Streaming Endpoints (Protected via Header or Query JWT)
+		// Audio Streaming Engine (Protected with token support)
 		if s.streamH != nil {
 			r.Group(func(sr chi.Router) {
 				sr.Use(RequireAuth)
@@ -188,7 +192,6 @@ func (s *Server) setupRoutes() {
 			})
 		}
 
-		// Playlist Endpoints (Protected)
 		if s.playlistH != nil {
 			r.Group(func(pr chi.Router) {
 				pr.Use(RequireAuth)
@@ -196,10 +199,10 @@ func (s *Server) setupRoutes() {
 			})
 		}
 
-		// Direct Audio Ingestion / Upload (Protected)
+		// Direct Audio Ingestion / Upload (Admin Only)
 		if s.uploadH != nil {
 			r.Group(func(ur chi.Router) {
-				ur.Use(RequireAuth)
+				ur.Use(RequireAuth, RequireAdmin)
 				ur.Post("/upload", s.uploadH.UploadAudio)
 			})
 		}

@@ -15,8 +15,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Scanner.WorkerCount != 4 {
 		t.Errorf("expected default worker count 4, got %d", cfg.Scanner.WorkerCount)
 	}
-	if cfg.Auth.AccessTokenExpiry != 7*24*time.Hour {
-		t.Errorf("expected default access token expiry 7 days, got %v", cfg.Auth.AccessTokenExpiry)
+	if cfg.Auth.AccessTokenExpiry != 24*time.Hour {
+		t.Errorf("expected default access token expiry 24 hours, got %v", cfg.Auth.AccessTokenExpiry)
 	}
 }
 

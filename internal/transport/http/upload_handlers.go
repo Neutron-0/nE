@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"ne/internal/domain"
 	"ne/internal/service"
@@ -109,23 +110,34 @@ func (h *UploadHandler) UploadAudio(w http.ResponseWriter, r *http.Request) {
 			continue // Skip non-audio files
 		}
 
-		src, err := fileHeader.Open()
-		if err != nil {
-			continue
-		}
-		defer src.Close()
-
-		// Clean filename to prevent path traversal
 		cleanName := filepath.Base(fileHeader.Filename)
 		destPath := filepath.Join(targetLib.Path, cleanName)
 
-		dst, err := os.Create(destPath)
-		if err != nil {
-			continue
+		// Prevent arbitrary file overwrite: if file exists, add timestamp suffix
+		if _, err := os.Stat(destPath); err == nil {
+			cleanName = fmt.Sprintf("%s_%d%s", strings.TrimSuffix(cleanName, ext), time.Now().UnixNano(), ext)
+			destPath = filepath.Join(targetLib.Path, cleanName)
 		}
-		defer dst.Close()
 
-		if _, err := io.Copy(dst, src); err == nil {
+		// Process single file copy with immediate file descriptor closure
+		saveErr := func() error {
+			src, err := fileHeader.Open()
+			if err != nil {
+				return err
+			}
+			defer src.Close()
+
+			dst, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+			if err != nil {
+				return err
+			}
+			defer dst.Close()
+
+			_, err = io.Copy(dst, src)
+			return err
+		}()
+
+		if saveErr == nil {
 			savedFiles = append(savedFiles, cleanName)
 		}
 	}

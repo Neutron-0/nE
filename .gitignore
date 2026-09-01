@@ -1,4 +1,4 @@
-﻿# Reference project (STRICTLY IGNORED - Do NOT push to GitHub)
+# Reference project (STRICTLY IGNORED - Do NOT push to GitHub)
 Reference/
 reference/
 Refrence/
@@ -39,3 +39,10 @@ desktop.ini
 # Test & Temporary Databases
 live_backup.db
 test_sample.*
+
+# Sensitive Local Secrets & SQLite Databases
+data/*.db
+data/*.db-wal
+data/*.db-shm
+!data/.gitkeep
+config/*.key

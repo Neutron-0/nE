@@ -316,5 +316,28 @@ func TestCompleteHTTPServerEndpoints(t *testing.T) {
 		if unauthRec.Code != http.StatusUnauthorized {
 			t.Errorf("expected 401 for unauth request, got %d", unauthRec.Code)
 		}
+
+		// Unauthenticated upload -> 401
+		unauthUp := httptest.NewRequest(http.MethodPost, "/api/v1/upload", nil)
+		unauthUpRec := httptest.NewRecorder()
+		router.ServeHTTP(unauthUpRec, unauthUp)
+		if unauthUpRec.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401 for unauth upload, got %d", unauthUpRec.Code)
+		}
+
+		// Non-admin upload -> 403 Forbidden
+		mgr, _ := auth.NewJWTManager("test-secret-at-least-32-chars-long!", dir, 15*time.Minute, 30*24*time.Hour)
+		nonAdminToken, _, _ := mgr.GenerateAccessToken(auth.UserClaims{
+			UserID:   "user-2",
+			Username: "regular",
+			IsAdmin:  false,
+		})
+		nonAdminUp := httptest.NewRequest(http.MethodPost, "/api/v1/upload", nil)
+		nonAdminUp.Header.Set("Authorization", "Bearer "+nonAdminToken)
+		nonAdminUpRec := httptest.NewRecorder()
+		router.ServeHTTP(nonAdminUpRec, nonAdminUp)
+		if nonAdminUpRec.Code != http.StatusForbidden {
+			t.Errorf("expected 403 for non-admin upload, got %d", nonAdminUpRec.Code)
+		}
 	})
 }
