@@ -196,7 +196,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       if (queueIndex > 0) {
         playTrack(queue[queueIndex - 1])
       } else if (queue.length > 0) {
-        playTrack(queue[queueIndex - 1])
+        seek(0)
       }
     },
 

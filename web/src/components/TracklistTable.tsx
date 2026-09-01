@@ -1,8 +1,8 @@
-﻿import React from 'react'
+import React, { useState } from 'react'
 import { motion } from 'motion/react'
-import { Clock, Play, Heart, MoreHorizontal, Download } from 'lucide-react'
+import { Clock, Play, Heart, MoreHorizontal, Download, ListPlus, Check } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import type { Track } from '../types'
+import type { Track, Playlist } from '../types'
 import { usePlayerStore } from '../store/playerStore'
 import { api } from '../lib/api'
 
@@ -13,6 +13,28 @@ interface TracklistTableProps {
 
 export const TracklistTable: React.FC<TracklistTableProps> = ({ tracks, onStarToggle }) => {
   const { playTrack, currentTrack, isPlaying } = usePlayerStore()
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [addedFeedback, setAddedFeedback] = useState<{ [key: string]: boolean }>({})
+
+  const loadPlaylists = async () => {
+    try {
+      const res = await api.getPlaylists()
+      setPlaylists(res.items || [])
+    } catch {}
+  }
+
+  const handleAddToPlaylist = async (playlistId: string, trackId: string) => {
+    try {
+      await api.addTrackToPlaylist(playlistId, trackId)
+      const key = `${playlistId}-${trackId}`
+      setAddedFeedback((prev) => ({ ...prev, [key]: true }))
+      setTimeout(() => {
+        setAddedFeedback((prev) => ({ ...prev, [key]: false }))
+      }, 2000)
+    } catch (err) {
+      console.warn('Failed to add track to playlist:', err)
+    }
+  }
 
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '0:00'
@@ -116,7 +138,10 @@ export const TracklistTable: React.FC<TracklistTableProps> = ({ tracks, onStarTo
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger asChild>
                     <button
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        loadPlaylists()
+                      }}
                       className="p-1 text-zinc-500 hover:text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <MoreHorizontal className="w-3.5 h-3.5" />
@@ -133,6 +158,36 @@ export const TracklistTable: React.FC<TracklistTableProps> = ({ tracks, onStarTo
                       >
                         <Play className="w-3.5 h-3.5" /> Play Now
                       </DropdownMenu.Item>
+                      <DropdownMenu.Sub>
+                        <DropdownMenu.SubTrigger className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/[0.08] cursor-pointer outline-none w-full">
+                          <span className="flex items-center gap-2">
+                            <ListPlus className="w-3.5 h-3.5" /> Add to Playlist
+                          </span>
+                          <span className="text-[10px] text-zinc-500">▶</span>
+                        </DropdownMenu.SubTrigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.SubContent className="min-w-[170px] liquid-glass rounded-xl p-1.5 shadow-2xl z-50 text-xs text-zinc-300 font-sans">
+                            {playlists.length === 0 ? (
+                              <div className="px-2.5 py-1.5 text-zinc-500 text-[11px]">No playlists found</div>
+                            ) : (
+                              playlists.map((pl) => {
+                                const key = `${pl.id}-${track.id}`
+                                const isAdded = addedFeedback[key]
+                                return (
+                                  <DropdownMenu.Item
+                                    key={pl.id}
+                                    onClick={() => handleAddToPlaylist(pl.id, track.id)}
+                                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/[0.08] cursor-pointer outline-none"
+                                  >
+                                    <span className="truncate pr-2">{pl.name}</span>
+                                    {isAdded && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
+                                  </DropdownMenu.Item>
+                                )
+                              })
+                            )}
+                          </DropdownMenu.SubContent>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Sub>
                       <DropdownMenu.Item
                         onClick={() => window.open(api.getStreamUrl(track.id), '_blank')}
                         className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.08] cursor-pointer outline-none"

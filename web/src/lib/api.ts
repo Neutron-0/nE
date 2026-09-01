@@ -39,9 +39,13 @@ class ApiClient {
     return this.token
   }
 
+  private isRefreshing = false
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers || {})
-    headers.set('Content-Type', 'application/json')
+    if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+      headers.set('Content-Type', 'application/json')
+    }
     if (this.token) {
       headers.set('Authorization', `Bearer ${this.token}`)
     }
@@ -49,10 +53,41 @@ class ApiClient {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
+      credentials: 'include',
     })
 
     if (!response.ok) {
-      if (response.status === 401) {
+      // If 401 and not already refreshing or calling auth endpoints, try refreshing session
+      if (response.status === 401 && !this.isRefreshing && !endpoint.startsWith('/auth/')) {
+        this.isRefreshing = true
+        try {
+          const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          })
+          if (refreshRes.ok) {
+            const data: AuthResult = await refreshRes.json()
+            this.setToken(data.accessToken)
+            this.isRefreshing = false
+            // Retry original request with newly refreshed access token
+            headers.set('Authorization', `Bearer ${data.accessToken}`)
+            const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
+              ...options,
+              headers,
+              credentials: 'include',
+            })
+            if (retryRes.ok) {
+              return retryRes.json()
+            }
+          }
+        } catch {
+          // Refresh failed
+        } finally {
+          this.isRefreshing = false
+        }
+
+        // If refresh failed or was rejected, clear authentication
         this.setToken(null)
       }
 
@@ -189,6 +224,15 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify({ trackIds }),
     })
+  }
+
+  async addTrackToPlaylist(playlistId: string, trackId: string): Promise<void> {
+    const full = await this.getPlaylist(playlistId)
+    const trackIds = (full.tracks || []).map((t) => t.id)
+    if (!trackIds.includes(trackId)) {
+      trackIds.push(trackId)
+      await this.setPlaylistTracks(playlistId, trackIds)
+    }
   }
 
   async deletePlaylist(id: string): Promise<void> {
