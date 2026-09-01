@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"os"
@@ -29,8 +30,24 @@ func NewArtworkService(catalogRepo *repository.CatalogRepository, cacheDir strin
 	}
 }
 
-// ServeArtwork streams artwork for a given album or track with ETag caching.
+// ServeArtwork streams artwork for a given album, track, or artist with disk and ETag caching.
 func (s *ArtworkService) ServeArtwork(ctx context.Context, w http.ResponseWriter, r *http.Request, itemType, itemID string, size int) error {
+	// 0. Check cache file first
+	cacheFile := filepath.Join(s.cacheDir, fmt.Sprintf("%s_%s.jpg", itemType, itemID))
+	if data, err := os.ReadFile(cacheFile); err == nil && len(data) > 0 {
+		etag := fmt.Sprintf(`"%x"`, sha256.Sum256(data))
+		if match := r.Header.Get("If-None-Match"); match == etag {
+			w.WriteHeader(http.StatusNotModified)
+			return nil
+		}
+		w.Header().Set("ETag", etag)
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+		w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+		http.ServeContent(w, r, "cover.jpg", time.Time{}, bytes.NewReader(data))
+		return nil
+	}
+
 	var filePath string
 	var searchArtist, searchTitle string
 
@@ -51,22 +68,48 @@ func (s *ArtworkService) ServeArtwork(ctx context.Context, w http.ResponseWriter
 		filePath = tracks[0].Path
 		searchArtist = tracks[0].RawArtist
 		searchTitle = tracks[0].AlbumTitle
+	case "artist":
+		artist, err := s.catalogRepo.GetArtistByID(ctx, itemID)
+		if err != nil {
+			return domain.ErrNotFound("Artist artwork", itemID)
+		}
+		searchArtist = artist.Name
+		searchTitle = ""
+		// If artist has albums, grab the first album's audio track for artwork extraction
+		albums, _, _ := s.catalogRepo.ListAlbums(ctx, 100, 0)
+		for _, alb := range albums {
+			if alb.AlbumArtistID == itemID {
+				albTracks, _ := s.catalogRepo.ListTracksByAlbum(ctx, alb.ID)
+				if len(albTracks) > 0 {
+					filePath = albTracks[0].Path
+					break
+				}
+			}
+		}
 	default:
 		return domain.ErrInvalidInput("Invalid artwork item type")
 	}
 
 	// 1. Try extracting local artwork
-	art, err := media.ExtractArtwork(filePath)
+	var art *media.ExtractedArtwork
+	var err error
+	if filePath != "" {
+		art, err = media.ExtractArtwork(filePath)
+	} else {
+		err = fmt.Errorf("no local audio file for artwork")
+	}
+
 	if err != nil {
 		// 2. Fallback: Query online cover art provider (iTunes API)
 		if onlineArt, onErr := media.FetchOnlineArtwork(searchArtist, searchTitle); onErr == nil {
 			art = onlineArt
-			cacheFile := filepath.Join(s.cacheDir, art.Fingerprint+".jpg")
-			_ = os.WriteFile(cacheFile, art.Data, 0644)
 		} else {
 			return s.servePlaceholderSVG(w, r)
 		}
 	}
+
+	// Save to persistent cache
+	_ = os.WriteFile(cacheFile, art.Data, 0644)
 
 	etag := fmt.Sprintf(`"%s"`, art.Fingerprint)
 	if match := r.Header.Get("If-None-Match"); match == etag {

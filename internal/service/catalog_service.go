@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -90,6 +90,10 @@ func (s *CatalogService) ListTracks(ctx context.Context, limit, offset int) ([]*
 
 func (s *CatalogService) GetTrack(ctx context.Context, id string) (*domain.Track, error) {
 	return s.catalogRepo.GetTrackByID(ctx, id)
+}
+
+func (s *CatalogService) GetRandomTracks(ctx context.Context, limit int) ([]*domain.Track, error) {
+	return s.catalogRepo.GetRandomTracks(ctx, limit)
 }
 
 // ----------------- Genres -----------------

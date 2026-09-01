@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -55,13 +55,14 @@ func (s *AuthService) SetupInitialAdmin(ctx context.Context, username, email, pa
 	}
 
 	user := &domain.User{
-		ID:           uuid.NewString(),
-		Username:     username,
-		Email:        strings.TrimSpace(email),
-		PasswordHash: hash,
-		IsAdmin:      true,
-		CanTranscode: true,
-		TokenVersion: 1,
+		ID:            uuid.NewString(),
+		Username:      username,
+		Email:         strings.TrimSpace(email),
+		PasswordHash:  hash,
+		SubsonicToken: password,
+		IsAdmin:       true,
+		CanTranscode:  true,
+		TokenVersion:  1,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
@@ -82,6 +83,11 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Au
 	valid, err := auth.VerifyPassword(password, user.PasswordHash)
 	if err != nil || !valid {
 		return nil, domain.ErrUnauthorized("Invalid username or password")
+	}
+
+	if user.SubsonicToken == "" {
+		_ = s.userRepo.SetSubsonicToken(ctx, user.ID, password)
+		user.SubsonicToken = password
 	}
 
 	return s.createSession(ctx, user)
@@ -153,7 +159,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, oldPassword, n
 		return fmt.Errorf("hashing new password: %w", err)
 	}
 
-	if err := s.userRepo.UpdatePassword(ctx, userID, newHash); err != nil {
+	if err := s.userRepo.UpdatePassword(ctx, userID, newHash, newPassword); err != nil {
 		return err
 	}
 

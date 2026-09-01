@@ -105,11 +105,20 @@ func (r *UserRepository) Count(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, id string, passwordHash string) error {
-	query := `UPDATE users SET password_hash = ?, token_version = token_version + 1, updated_at = ? WHERE id = ?`
-	_, err := r.db.Executor().ExecContext(ctx, query, passwordHash, time.Now().UTC(), id)
+func (r *UserRepository) UpdatePassword(ctx context.Context, id string, passwordHash string, subsonicToken string) error {
+	query := `UPDATE users SET password_hash = ?, subsonic_token = ?, token_version = token_version + 1, updated_at = ? WHERE id = ?`
+	_, err := r.db.Executor().ExecContext(ctx, query, passwordHash, subsonicToken, time.Now().UTC(), id)
 	if err != nil {
 		return fmt.Errorf("updating user password: %w", err)
+	}
+	return nil
+}
+
+func (r *UserRepository) SetSubsonicToken(ctx context.Context, id string, subsonicToken string) error {
+	query := `UPDATE users SET subsonic_token = ?, updated_at = ? WHERE id = ?`
+	_, err := r.db.Executor().ExecContext(ctx, query, subsonicToken, time.Now().UTC(), id)
+	if err != nil {
+		return fmt.Errorf("updating subsonic token: %w", err)
 	}
 	return nil
 }

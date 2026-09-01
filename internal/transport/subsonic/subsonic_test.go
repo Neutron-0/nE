@@ -2,7 +2,10 @@ package subsonic_test
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -36,10 +39,11 @@ func TestSubsonicEndpoints(t *testing.T) {
 	// Create test user: neo / neo03
 	passHash, _ := auth.HashPassword("neo03")
 	testUser := &domain.User{
-		Username:     "neo",
-		Email:        "neo@ne.audio",
-		PasswordHash: passHash,
-		IsAdmin:      true,
+		Username:      "neo",
+		Email:         "neo@ne.audio",
+		PasswordHash:  passHash,
+		SubsonicToken: "neo03",
+		IsAdmin:       true,
 	}
 	if err := userRepo.Create(ctx, testUser); err != nil {
 		t.Fatalf("create user failed: %v", err)
@@ -47,7 +51,7 @@ func TestSubsonicEndpoints(t *testing.T) {
 
 	catService := service.NewCatalogService(catRepo, nil)
 	annoService := service.NewAnnotationService(annoRepo)
-	subHandler := subsonic.NewSubsonicHandler(userRepo, catService, nil, nil, annoService)
+	subHandler := subsonic.NewSubsonicHandler(userRepo, catService, nil, nil, annoService, nil)
 	router := subHandler.Routes()
 
 	// 1. Test ping.view with valid credentials
@@ -83,6 +87,40 @@ func TestSubsonicEndpoints(t *testing.T) {
 
 		if subRes.Status != "failed" || subRes.Error == nil || subRes.Error.Code != 40 {
 			t.Errorf("expected failed status with code 40, got %+v", subRes)
+		}
+	})
+
+	// 2b. Test ping.view with valid token and salt (t = md5(password + salt))
+	t.Run("PingWithValidTokenAndSalt", func(t *testing.T) {
+		salt := "somesalt123"
+		hash := md5.Sum([]byte("neo03" + salt))
+		token := hex.EncodeToString(hash[:])
+
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/ping.view?u=neo&t=%s&s=%s&v=1.16.1&c=test&f=json", token, salt), nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		var res map[string]subsonic.Response
+		_ = json.NewDecoder(rec.Body).Decode(&res)
+		subRes := res["subsonic-response"]
+
+		if subRes.Status != "ok" {
+			t.Errorf("expected ok status for valid token+salt, got %+v", subRes)
+		}
+	})
+
+	// 2c. Test ping.view with INVALID token and salt -> must return 40 error
+	t.Run("PingWithInvalidTokenAndSalt", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/ping.view?u=neo&t=invalidtoken123&s=somesalt&v=1.16.1&c=test&f=json", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		var res map[string]subsonic.Response
+		_ = json.NewDecoder(rec.Body).Decode(&res)
+		subRes := res["subsonic-response"]
+
+		if subRes.Status != "failed" || subRes.Error == nil || subRes.Error.Code != 40 {
+			t.Errorf("expected failed status with code 40 for invalid token, got %+v", subRes)
 		}
 	})
 

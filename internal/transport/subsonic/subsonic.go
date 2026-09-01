@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"crypto/md5"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
@@ -18,11 +19,12 @@ import (
 )
 
 type SubsonicHandler struct {
-	userRepo       *repository.UserRepository
-	catalogService *service.CatalogService
-	streamService  *service.StreamService
-	artworkService *service.ArtworkService
-	annoService    *service.AnnotationService
+	userRepo        *repository.UserRepository
+	catalogService  *service.CatalogService
+	streamService   *service.StreamService
+	artworkService  *service.ArtworkService
+	annoService     *service.AnnotationService
+	playlistService *service.PlaylistService
 }
 
 func NewSubsonicHandler(
@@ -31,13 +33,15 @@ func NewSubsonicHandler(
 	streamService *service.StreamService,
 	artworkService *service.ArtworkService,
 	annoService *service.AnnotationService,
+	playlistService *service.PlaylistService,
 ) *SubsonicHandler {
 	return &SubsonicHandler{
-		userRepo:       userRepo,
-		catalogService: catalogService,
-		streamService:  streamService,
-		artworkService: artworkService,
-		annoService:    annoService,
+		userRepo:        userRepo,
+		catalogService:  catalogService,
+		streamService:   streamService,
+		artworkService:  artworkService,
+		annoService:     annoService,
+		playlistService: playlistService,
 	}
 }
 
@@ -61,6 +65,25 @@ type Response struct {
 	AlbumList2   *AlbumList    `xml:"albumList2,omitempty" json:"albumList2,omitempty"`
 	Playlists    *Playlists    `xml:"playlists,omitempty" json:"playlists,omitempty"`
 	Genres       *Genres       `xml:"genres,omitempty" json:"genres,omitempty"`
+	RandomSongs  *RandomSongs  `xml:"randomSongs,omitempty" json:"randomSongs,omitempty"`
+	Starred      *Starred      `xml:"starred,omitempty" json:"starred,omitempty"`
+	Starred2     *Starred2     `xml:"starred2,omitempty" json:"starred2,omitempty"`
+}
+
+type RandomSongs struct {
+	Song []Child `xml:"song" json:"song"`
+}
+
+type Starred struct {
+	Artist []Artist `xml:"artist,omitempty" json:"artist,omitempty"`
+	Album  []Album  `xml:"album,omitempty" json:"album,omitempty"`
+	Song   []Child  `xml:"song,omitempty" json:"song,omitempty"`
+}
+
+type Starred2 struct {
+	Artist []Artist `xml:"artist,omitempty" json:"artist,omitempty"`
+	Album  []Album  `xml:"album,omitempty" json:"album,omitempty"`
+	Song   []Child  `xml:"song,omitempty" json:"song,omitempty"`
 }
 
 type AlbumList struct {
@@ -188,6 +211,7 @@ func (h *SubsonicHandler) Routes() chi.Router {
 		"getArtist", "getAlbum", "getSong", "stream", "getCoverArt",
 		"search3", "star", "unstar", "scrobble",
 		"getAlbumList", "getAlbumList2", "getPlaylists", "getGenres",
+		"getStarred", "getStarred2", "getRandomSongs",
 	}
 
 	for _, ep := range endpoints {
@@ -222,7 +246,7 @@ func (h *SubsonicHandler) dispatch(action string) http.HandlerFunc {
 		case "getAlbumList", "getAlbumList2":
 			h.getAlbumList2(w, r)
 		case "getPlaylists":
-			h.getPlaylists(w, r)
+			h.getPlaylists(w, r, user)
 		case "getGenres":
 			h.getGenres(w, r)
 		case "getSong":
@@ -239,6 +263,10 @@ func (h *SubsonicHandler) dispatch(action string) http.HandlerFunc {
 			h.star(w, r, user, false)
 		case "scrobble":
 			h.scrobble(w, r, user)
+		case "getStarred", "getStarred2":
+			h.getStarred(w, r, user)
+		case "getRandomSongs":
+			h.getRandomSongs(w, r)
 		default:
 			h.respondError(w, r, 0, "Unsupported action")
 		}
@@ -272,17 +300,29 @@ func (h *SubsonicHandler) authenticate(r *http.Request) (*domain.User, error) {
 
 	if password != "" {
 		if ok, _ := auth.VerifyPassword(password, user.PasswordHash); ok {
+			if user.SubsonicToken == "" {
+				_ = h.userRepo.SetSubsonicToken(r.Context(), user.ID, password)
+				user.SubsonicToken = password
+			}
 			return user, nil
 		}
 	}
 
 	// 2. Check token + salt authentication (t = md5(password + salt))
 	token := r.URL.Query().Get("t")
+	if token == "" {
+		token = r.FormValue("t")
+	}
 	salt := r.URL.Query().Get("s")
-	if token != "" && salt != "" {
-		// Fallback check: if token MD5 is present for client compatibility
-		_ = md5.New()
-		return user, nil
+	if salt == "" {
+		salt = r.FormValue("s")
+	}
+	if token != "" && salt != "" && user.SubsonicToken != "" {
+		expectedHash := md5.Sum([]byte(user.SubsonicToken + salt))
+		expectedToken := hex.EncodeToString(expectedHash[:])
+		if subtle.ConstantTimeCompare([]byte(strings.ToLower(token)), []byte(strings.ToLower(expectedToken))) == 1 {
+			return user, nil
+		}
 	}
 
 	return nil, fmt.Errorf("authentication failed")
@@ -509,14 +549,45 @@ func (h *SubsonicHandler) getGenres(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *SubsonicHandler) getPlaylists(w http.ResponseWriter, r *http.Request) {
+func (h *SubsonicHandler) getPlaylists(w http.ResponseWriter, r *http.Request, user *domain.User) {
+	if h.playlistService == nil {
+		h.respondOK(w, r, &Response{
+			Playlists: &Playlists{Playlist: []Playlist{}},
+		})
+		return
+	}
+
+	playlists, err := h.playlistService.ListPlaylists(r.Context(), user.ID)
+	if err != nil {
+		h.respondOK(w, r, &Response{
+			Playlists: &Playlists{Playlist: []Playlist{}},
+		})
+		return
+	}
+
+	var res []Playlist
+	for _, p := range playlists {
+		res = append(res, Playlist{
+			ID:        p.ID,
+			Name:      p.Name,
+			Comment:   p.Comment,
+			SongCount: p.TrackCount,
+			Duration:  int(p.Duration),
+			Public:    p.IsPublic,
+			Owner:     user.Username,
+		})
+	}
+
 	h.respondOK(w, r, &Response{
-		Playlists: &Playlists{Playlist: []Playlist{}},
+		Playlists: &Playlists{Playlist: res},
 	})
 }
 
 func (h *SubsonicHandler) stream(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
+	if id == "" {
+		id = r.FormValue("id")
+	}
 	if err := h.streamService.StreamTrack(r.Context(), w, r, id); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 	}
@@ -524,6 +595,9 @@ func (h *SubsonicHandler) stream(w http.ResponseWriter, r *http.Request) {
 
 func (h *SubsonicHandler) getCoverArt(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
+	if id == "" {
+		id = r.FormValue("id")
+	}
 	itemType := "album"
 	if strings.HasPrefix(id, "ar-") {
 		itemType = "artist"
@@ -541,6 +615,80 @@ func (h *SubsonicHandler) getCoverArt(w http.ResponseWriter, r *http.Request) {
 	if err := h.artworkService.ServeArtwork(r.Context(), w, r, itemType, id, size); err != nil {
 		_ = h.artworkService.ServeArtwork(r.Context(), w, r, "track", id, size)
 	}
+}
+
+func (h *SubsonicHandler) getStarred(w http.ResponseWriter, r *http.Request, user *domain.User) {
+	favTracks, err := h.annoService.GetFavorites(r.Context(), user.ID)
+	if err != nil {
+		h.respondError(w, r, 0, err.Error())
+		return
+	}
+
+	var songs []Child
+	for _, t := range favTracks {
+		songs = append(songs, Child{
+			ID:          t.ID,
+			Parent:      t.AlbumID,
+			IsDir:       false,
+			Title:       t.Title,
+			Album:       t.AlbumTitle,
+			Artist:      t.RawArtist,
+			Track:       t.TrackNumber,
+			Year:        t.Year,
+			CoverArt:    "al-" + t.AlbumID,
+			Size:        t.FileSize,
+			ContentType: "audio/" + t.Format,
+			Suffix:      t.Format,
+			Duration:    int(t.Duration),
+			BitRate:     t.BitRate,
+			Path:        t.Path,
+		})
+	}
+
+	h.respondOK(w, r, &Response{
+		Starred:  &Starred{Song: songs},
+		Starred2: &Starred2{Song: songs},
+	})
+}
+
+func (h *SubsonicHandler) getRandomSongs(w http.ResponseWriter, r *http.Request) {
+	size := 10
+	if s := r.URL.Query().Get("size"); s != "" {
+		if val, err := strconv.Atoi(s); err == nil && val > 0 {
+			size = val
+		}
+	}
+
+	tracks, err := h.catalogService.GetRandomTracks(r.Context(), size)
+	if err != nil {
+		h.respondError(w, r, 0, err.Error())
+		return
+	}
+
+	var songs []Child
+	for _, t := range tracks {
+		songs = append(songs, Child{
+			ID:          t.ID,
+			Parent:      t.AlbumID,
+			IsDir:       false,
+			Title:       t.Title,
+			Album:       t.AlbumTitle,
+			Artist:      t.RawArtist,
+			Track:       t.TrackNumber,
+			Year:        t.Year,
+			CoverArt:    "al-" + t.AlbumID,
+			Size:        t.FileSize,
+			ContentType: "audio/" + t.Format,
+			Suffix:      t.Format,
+			Duration:    int(t.Duration),
+			BitRate:     t.BitRate,
+			Path:        t.Path,
+		})
+	}
+
+	h.respondOK(w, r, &Response{
+		RandomSongs: &RandomSongs{Song: songs},
+	})
 }
 
 func (h *SubsonicHandler) search3(w http.ResponseWriter, r *http.Request) {
