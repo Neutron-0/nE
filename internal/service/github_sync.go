@@ -188,6 +188,7 @@ type gitHubContentResponse struct {
 
 type gitHubCommitResponse struct {
 	Content struct {
+		SHA     string `json:"sha"`
 		HTMLURL string `json:"html_url"`
 	} `json:"content"`
 	Commit struct {

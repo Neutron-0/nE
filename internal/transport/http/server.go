@@ -124,6 +124,11 @@ func (s *Server) setupMiddlewares() {
 }
 
 func (s *Server) setupRoutes() {
+	// Top-level health check endpoint for container orchestrators and load balancers
+	if s.healthH != nil {
+		s.router.Get("/health", s.healthH.Liveness)
+	}
+
 	// Mount OpenSubsonic / Subsonic API endpoints
 	if s.subsonicH != nil {
 		s.router.Mount("/rest", s.subsonicH.Routes())

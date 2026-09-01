@@ -1,4 +1,4 @@
-﻿# Caddyfile for nE Production Deployment with Automatic TLS
+# Caddyfile for nE Production Deployment with Automatic TLS
 {
     email admin@example.com
 }
@@ -7,7 +7,7 @@ music.example.com {
     encode gzip zstd
 
     # Disable proxy buffering for audio streaming and Server-Sent Events (SSE)
-    @streaming path /api/v1/stream/* /api/v1/admin/scan/events
+    @streaming path /api/v1/stream/* /api/v1/admin/scan/events /rest/stream* /rest/download*
     handle @streaming {
         reverse_proxy ne:4533 {
             flush_interval -1
