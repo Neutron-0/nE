@@ -677,7 +677,27 @@ func (r *CatalogRepository) Search(ctx context.Context, queryStr string, limit i
 	}
 
 	// 3. Search Tracks via FTS5
-	ftsQuery := cleanQuery + "*"
+	// Sanitize query for FTS5: strip punctuation and wrap each token in quotes with prefix matching
+	sanitized := strings.Map(func(r rune) rune {
+		if strings.ContainsRune(`"':*^()[]{}-+`, r) {
+			return ' '
+		}
+		return r
+	}, cleanQuery)
+
+	words := strings.Fields(sanitized)
+	if len(words) == 0 {
+		return result, nil
+	}
+
+	var ftsParts []string
+	for _, w := range words {
+		if w != "" {
+			ftsParts = append(ftsParts, w+"*")
+		}
+	}
+	ftsQuery := strings.Join(ftsParts, " ")
+
 	ftsRows, err := r.db.Executor().QueryContext(ctx,
 		`SELECT t.id, t.pid, t.library_id, t.path, t.folder_path, t.filename, t.title, t.sort_title,
 		t.raw_artist, t.album_id, al.title, ar.name, t.track_number, t.disc_number, t.disc_subtitle,
@@ -820,7 +840,8 @@ func (r *CatalogRepository) GetRecentlyPlayedTracks(ctx context.Context, userID 
 		JOIN artists ar ON a.album_artist_id = ar.id
 		JOIN playback_history h ON t.id = h.track_id
 		WHERE h.user_id = ?
-		ORDER BY h.played_at DESC LIMIT ?`
+		GROUP BY t.id
+		ORDER BY MAX(h.played_at) DESC LIMIT ?`
 	return r.scanTracksQuery(ctx, query, userID, limit)
 }
 

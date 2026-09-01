@@ -211,6 +211,15 @@ func (s *GitHubSyncService) BackupFile(ctx context.Context, localFilePath, repoP
 		branch = "main"
 	}
 
+	// 0. Enforce GitHub Contents API 25 MB file size limit
+	fileInfo, err := os.Stat(localFilePath)
+	if err != nil {
+		return "", fmt.Errorf("stat file %q: %w", localFilePath, err)
+	}
+	if fileInfo.Size() > 25*1024*1024 {
+		return "", fmt.Errorf("file %q exceeds GitHub Contents API 25 MB limit (size: %.2f MB)", localFilePath, float64(fileInfo.Size())/(1024*1024))
+	}
+
 	data, err := os.ReadFile(localFilePath)
 	if err != nil {
 		return "", fmt.Errorf("reading file %q: %w", localFilePath, err)
@@ -252,7 +261,7 @@ func (s *GitHubSyncService) BackupFile(ctx context.Context, localFilePath, repoP
 
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("marshaling commit payload: %w", err)
 	}
 
 	putURL := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s", repo, repoPath)
@@ -268,15 +277,15 @@ func (s *GitHubSyncService) BackupFile(ctx context.Context, localFilePath, repoP
 	putResp, err := s.client.Do(putReq)
 	if err != nil {
 		s.recordError(err.Error())
-		return "", fmt.Errorf("uploading to GitHub: %w", err)
+		return "", fmt.Errorf("executing GitHub upload: %w", err)
 	}
 	defer putResp.Body.Close()
 
 	if putResp.StatusCode != http.StatusOK && putResp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(putResp.Body)
-		errMsg := fmt.Sprintf("GitHub API returned %d: %s", putResp.StatusCode, string(respBody))
-		s.recordError(errMsg)
-		return "", errors.New(errMsg)
+		errStr := fmt.Sprintf("GitHub API returned HTTP %d: %s", putResp.StatusCode, string(respBody))
+		s.recordError(errStr)
+		return "", errors.New(errStr)
 	}
 
 	var commitRes gitHubCommitResponse
@@ -287,14 +296,15 @@ func (s *GitHubSyncService) BackupFile(ctx context.Context, localFilePath, repoP
 	s.lastError = ""
 	s.mu.Unlock()
 
-	s.logger.Info("Successfully backed up file to GitHub", "path", repoPath, "commit", commitRes.Commit.SHA)
-	return commitRes.Commit.SHA, nil
+	s.logger.Info("Successfully backed up file to GitHub", "path", repoPath, "sha", commitRes.Content.SHA)
+	return commitRes.Content.SHA, nil
 }
 
+// BackupTrack uploads an ingested audio track to the configured GitHub repository.
 func (s *GitHubSyncService) BackupTrack(ctx context.Context, localFilePath, fileName string) (string, error) {
 	s.mu.RLock()
-	autoSync := s.cfg.AutoSync
 	configured := s.cfg.Token != "" && s.cfg.Repo != ""
+	autoSync := s.cfg.AutoSync
 	s.mu.RUnlock()
 
 	if !configured || !autoSync {
@@ -307,8 +317,15 @@ func (s *GitHubSyncService) BackupTrack(ctx context.Context, localFilePath, file
 }
 
 func (s *GitHubSyncService) BackupDatabase(ctx context.Context, dbPath string) (string, error) {
+	tempBackup := filepath.Join(os.TempDir(), fmt.Sprintf("ne_backup_%d.db", time.Now().UnixNano()))
+	defer os.Remove(tempBackup)
+
+	if err := s.db.Backup(ctx, tempBackup); err != nil {
+		return "", fmt.Errorf("creating hot database snapshot: %w", err)
+	}
+
 	commitMsg := fmt.Sprintf("chore(db): snapshot database state at %s [backup via nE UI]", time.Now().UTC().Format(time.RFC3339))
-	return s.BackupFile(ctx, dbPath, "data/ne.db", commitMsg)
+	return s.BackupFile(ctx, tempBackup, "data/ne.db", commitMsg)
 }
 
 func (s *GitHubSyncService) BackupAll(ctx context.Context, musicDir, dbPath string) (int, error) {
@@ -320,24 +337,25 @@ func (s *GitHubSyncService) BackupAll(ctx context.Context, musicDir, dbPath stri
 		return 0, errors.New("GitHub sync is not configured (missing token or repository)")
 	}
 
-	entries, err := os.ReadDir(musicDir)
-	if err != nil {
-		return 0, fmt.Errorf("reading music directory: %w", err)
-	}
-
 	count := 0
-	for _, entry := range entries {
-		if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-			continue
+	_ = filepath.WalkDir(musicDir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || strings.HasPrefix(d.Name(), ".") {
+			return nil
 		}
-		fullPath := filepath.Join(musicDir, entry.Name())
-		_, err := s.BackupFile(ctx, fullPath, "music/"+entry.Name(), fmt.Sprintf("feat(music): backup %s via nE UI", entry.Name()))
-		if err == nil {
+		ext := strings.ToLower(filepath.Ext(d.Name()))
+		if ext != ".mp3" && ext != ".flac" && ext != ".m4a" && ext != ".aac" && ext != ".ogg" && ext != ".opus" && ext != ".wav" {
+			return nil
+		}
+		relPath, _ := filepath.Rel(musicDir, p)
+		repoPath := "music/" + filepath.ToSlash(relPath)
+		_, backupErr := s.BackupFile(ctx, p, repoPath, fmt.Sprintf("feat(music): backup %s via nE UI", filepath.Base(p)))
+		if backupErr == nil {
 			count++
 		} else {
-			s.logger.Warn("Failed backing up track to GitHub", "file", entry.Name(), "error", err)
+			s.logger.Warn("Failed backing up track to GitHub", "file", p, "error", backupErr)
 		}
-	}
+		return nil
+	})
 
 	// Also backup database if it exists
 	if _, err := os.Stat(dbPath); err == nil {

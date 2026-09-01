@@ -1,4 +1,4 @@
-﻿package repository_test
+package repository_test
 
 import (
 	"context"
@@ -192,5 +192,43 @@ func TestFullTextSearchFTS5(t *testing.T) {
 	}
 	if len(res3.Artists) == 0 && len(res3.Tracks) == 0 {
 		t.Error("expected search results for artist 'Bjork'")
+	}
+
+	// Verify FTS Delete Trigger
+	_ = catRepo.DeleteTrackByPath(ctx, db.Executor(), trk.Path)
+	resAfterDelete, _ := catRepo.Search(ctx, "Joga", 10)
+	if len(resAfterDelete.Tracks) != 0 {
+		t.Errorf("expected 0 tracks in FTS after track deletion, got %d", len(resAfterDelete.Tracks))
+	}
+}
+
+func TestRecentlyPlayedDeduplication(t *testing.T) {
+	db, catRepo, annoRepo, _ := setupTestRepositories(t)
+	ctx := context.Background()
+
+	userRepo := repository.NewUserRepository(db)
+	user := &domain.User{ID: "user-recent", Username: "recent_listener", PasswordHash: "hash"}
+	_ = userRepo.Create(ctx, user)
+
+	lib := &domain.Library{ID: "lib-recent", Name: "Lib", Path: "/music"}
+	_ = catRepo.CreateLibrary(ctx, lib)
+
+	art, _ := catRepo.FindOrCreateArtist(ctx, db.Executor(), "Artist 1", "Artist 1", "")
+	alb, _ := catRepo.FindOrCreateAlbum(ctx, db.Executor(), &domain.Album{Title: "Album 1", SortTitle: "Album 1", AlbumArtistID: art.ID})
+	trk := &domain.Track{ID: "trk-repeat", PID: "pid-repeat", LibraryID: lib.ID, Path: "/music/repeat.flac", FolderPath: "/music", Filename: "repeat.flac", Title: "Repeated Song", SortTitle: "Repeated Song", RawArtist: "Artist 1", AlbumID: alb.ID, Duration: 200.0, TrackNumber: 1, DiscNumber: 1, MTime: 1000}
+	_ = catRepo.UpsertTrack(ctx, db.Executor(), trk)
+
+	// Scrobble the exact same track 3 times
+	for i := 0; i < 3; i++ {
+		_ = annoRepo.RecordPlayback(ctx, user.ID, trk.ID, "web", 200.0, true)
+	}
+
+	recent, err := catRepo.GetRecentlyPlayedTracks(ctx, user.ID, 10)
+	if err != nil {
+		t.Fatalf("get recently played failed: %v", err)
+	}
+
+	if len(recent) != 1 {
+		t.Errorf("expected exactly 1 deduplicated track in recently played, got %d", len(recent))
 	}
 }
