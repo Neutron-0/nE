@@ -115,42 +115,45 @@ class AudioEngine {
 
       this.auralBandpass = this.ctx.createBiquadFilter()
       this.auralBandpass.type = 'bandpass'
-      this.auralBandpass.frequency.value = 18500
-      this.auralBandpass.Q.value = 0.7
+      this.auralBandpass.frequency.value = 16500
+      this.auralBandpass.Q.value = 0.9
 
       this.auralGain = this.ctx.createGain()
       this.auralGain.gain.value = 0
 
-      // 5. Sub-Harmonic Bass Generator
+      // 5. Sub-Harmonic Visceral Bass Generator (Lowpass 65 Hz -> WaveShaper -> Gain)
       this.subBassFilter = this.ctx.createBiquadFilter()
       this.subBassFilter.type = 'lowpass'
-      this.subBassFilter.frequency.value = 75
+      this.subBassFilter.frequency.value = 65
+      this.subBassFilter.Q.value = 1.0
 
       this.subBassShaper = this.ctx.createWaveShaper()
       this.subBassShaper.curve = this.createSubCurve()
+      this.subBassShaper.oversample = '2x'
 
       this.subBassGain = this.ctx.createGain()
       this.subBassGain.gain.value = 0
 
-      // 6. Binaural Spatial Soundstage Matrix (Haas 3D Widening)
+      // 6. Master Studio Dynamics Compressor
+      this.compressor = this.ctx.createDynamicsCompressor()
+
+      // 7. Binaural Haas Stereo Spatial Widener
       this.haasDelay = this.ctx.createDelay(0.05)
-      this.haasDelay.delayTime.value = 0.012 // 12ms Haas psychoacoustic micro-delay
+      this.haasDelay.delayTime.value = 0.012 // 12 ms psychoacoustic Haas threshold
+
       this.haasGain = this.ctx.createGain()
       this.haasGain.gain.value = 0
 
-      // 7. Studio Dynamics Compressor
-      this.compressor = this.ctx.createDynamicsCompressor()
-
-      // 8. Master Brickwall Lookahead Limiter (-1.0 dBTP True-Peak Protection)
+      // 8. Output Brickwall True-Peak Limiter
       this.limiter = this.ctx.createDynamicsCompressor()
 
-      // 9. 60 FPS Visualizer Analyser Node
+      // 9. Realtime Fast Fourier Transform (FFT) Analyser
       this.analyser = this.ctx.createAnalyser()
       this.analyser.fftSize = 256
       this.analyser.smoothingTimeConstant = 0.82
 
       // Connect Main Stream Chain:
-      // Source -> PreAmp -> EQ Chain -> Compressor -> Limiter -> Analyser -> Output DAC
+      // Source -> PreAmp -> EQ Chain -> preCompressorBus -> Compressor -> Haas Widener -> Limiter -> Analyser -> Output DAC
       let current: AudioNode = this.source
 
       current.connect(this.preAmp)
@@ -172,19 +175,32 @@ class AudioEngine {
         current = eqNode
       }
 
-      // Mix synthesized harmonics and sub-bass into pre-compressor bus
-      this.auralGain.connect(current)
-      this.subBassGain.connect(current)
+      // Dedicated pre-compressor summing bus: clean summing of EQ, Aural Harmonics, and Sub-Bass
+      const preCompressorBus = this.ctx.createGain()
+      current.connect(preCompressorBus)
+      this.auralGain.connect(preCompressorBus)
+      this.subBassGain.connect(preCompressorBus)
 
-      current.connect(this.compressor)
+      preCompressorBus.connect(this.compressor)
       current = this.compressor
 
-      // Tap Binaural Haas expansion
-      current.connect(this.haasDelay)
-      this.haasDelay.connect(this.haasGain)
-      this.haasGain.connect(this.limiter)
+      // Binaural Haas Stereo Spatial Widener
+      // Direct channels remain intact; delayed reflection is cross-fed to opposite ear, preventing comb-filtering
+      const haasSplitter = this.ctx.createChannelSplitter(2)
+      const haasMerger = this.ctx.createChannelMerger(2)
 
-      current.connect(this.limiter)
+      current.connect(haasSplitter)
+
+      // Direct L and R paths
+      haasSplitter.connect(haasMerger, 0, 0)
+      haasSplitter.connect(haasMerger, 1, 1)
+
+      // Haas micro-delay applied strictly to cross-fed spatial ambience
+      haasSplitter.connect(this.haasDelay, 0) // Left to delay
+      this.haasDelay.connect(this.haasGain)
+      this.haasGain.connect(haasMerger, 0, 1) // Cross-fed into Right channel with delay
+
+      haasMerger.connect(this.limiter)
       current = this.limiter
 
       current.connect(this.analyser)
