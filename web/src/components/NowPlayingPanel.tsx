@@ -111,51 +111,51 @@ export const NowPlayingPanel: React.FC = () => {
           </span>
           <span className="text-zinc-500 font-mono">
             {engineVariant === 'apple'
-              ? 'APPLE 24-BIT // -16 LUFS'
+              ? 'HYPERION PRO // -16 LUFS'
               : engineVariant === 'spotify'
-              ? 'SPOTIFY // -14 LUFS'
-              : 'RAW DIRECT'}
+              ? 'BROADCAST // -14 LUFS'
+              : 'DIRECT // BIT-PERFECT'}
           </span>
         </div>
 
         <div className="grid grid-cols-3 gap-1">
-          {/* 1. Normal Variant */}
+          {/* 1. Direct / Normal Variant */}
           <button
             onClick={() => setEngineVariant('normal')}
-            title="Normal: Direct uncolored bit-perfect audio stream"
+            title="Direct: Uncolored bit-perfect audio stream"
             className={`py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer text-xs font-semibold ${
               engineVariant === 'normal'
                 ? 'bg-white text-black shadow-md font-bold'
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            Normal
+            Direct
           </button>
 
-          {/* 2. Spotify Engine */}
+          {/* 2. Broadcast Master Engine */}
           <button
             onClick={() => setEngineVariant('spotify')}
-            title="Spotify Engine: EBU R128 -14 LUFS volume match, acoustic curve & studio dynamics"
+            title="Broadcast Engine: EBU R128 -14 LUFS volume match, acoustic curve & studio dynamics"
             className={`py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer text-xs font-semibold ${
               engineVariant === 'spotify'
                 ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 font-bold'
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            Spotify
+            Broadcast
           </button>
 
-          {/* 3. Apple Music Engine (Unlocked) */}
+          {/* 3. Hyperion Studio Pro Engine */}
           <button
             onClick={() => setEngineVariant('apple')}
-            title="Apple Studio Engine: 24-bit dynamic headroom (-16 LUFS), Aural Harmonic Synthesizer & Spatial Stage"
+            title="Hyperion Studio Pro: 24-bit dynamic headroom (-16 LUFS), Aural Harmonic Synthesizer & Spatial Stage"
             className={`py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer text-xs font-semibold flex items-center justify-center gap-1 ${
               engineVariant === 'apple'
                 ? 'bg-gradient-to-r from-zinc-200 to-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] font-bold'
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <span>Apple Studio</span>
+            <span>Hyperion Pro</span>
           </button>
         </div>
       </div>

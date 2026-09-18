@@ -1,20 +1,20 @@
 // Audio Engine Variants:
-// 1. "normal"  - Uncolored, raw bit-perfect native audio pass-through
-// 2. "spotify" - EBU R128 -14 LUFS loudness matching, 10-band acoustic curve, studio dynamics compressor & brickwall limiter
-// 3. "apple"   - Hyperion Studio Engine: 24-bit dynamic headroom (-16 LUFS), Aural Harmonic Synthesizer (16–22 kHz air),
+// 1. "normal"  - Direct: Uncolored, raw bit-perfect native audio pass-through
+// 2. "spotify" - Broadcast: EBU R128 -14 LUFS loudness target, 10-band acoustic curve, studio dynamics compressor & brickwall limiter
+// 3. "apple"   - Hyperion Studio Pro: 24-bit dynamic headroom (-16 LUFS), Aural Harmonic Synthesizer (16–22 kHz air),
 //               Sub-harmonic bass tightener, and Binaural Spatial Soundstage Matrix.
 
 export type EngineVariant = 'normal' | 'spotify' | 'apple'
 
 export const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 
-// Spotify Master Acoustic Profile
+// Broadcast Master Acoustic Profile (EBU R128 -14 LUFS Target)
 const SPOTIFY_EQ_GAINS = [3.5, 3.0, 1.5, -0.5, -1.0, 0.5, 1.5, 2.5, 3.0, 3.5]
-const SPOTIFY_PREAMP_GAIN_DB = 3.5 // Matches Spotify -14 LUFS
+const SPOTIFY_PREAMP_GAIN_DB = 3.5 // Matches international streaming broadcast standard (-14 LUFS)
 
-// Apple Studio Acoustic Profile (Natural Audiophile Curves with Air & Dynamic Headroom)
+// Hyperion Studio Profile (Natural Audiophile Curves with Air & Dynamic Headroom at -16 LUFS)
 const APPLE_EQ_GAINS = [2.0, 1.8, 1.0, 0.0, -0.5, 0.5, 1.0, 2.0, 3.5, 5.0]
-const APPLE_PREAMP_GAIN_DB = 1.8 // Matches Apple Music -16 LUFS dynamic headroom
+const APPLE_PREAMP_GAIN_DB = 1.8 // Matches studio reference dynamic headroom (-16 LUFS)
 
 class AudioEngine {
   private ctx: AudioContext | null = null

@@ -219,7 +219,7 @@ export const AudioHUD: React.FC<AudioHUDProps> = ({ className = '', compact = fa
               ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
               : 'liquid-glass-pill text-zinc-400'
           }`}>
-            {engineVariant === 'apple' ? 'APPLE STUDIO 24-BIT' : engineVariant === 'spotify' ? 'SPOTIFY ENGINE' : 'NORMAL DIRECT'}
+            {engineVariant === 'apple' ? 'HYPERION PRO 24-BIT' : engineVariant === 'spotify' ? 'BROADCAST ENGINE' : 'DIRECT BIT-PERFECT'}
           </span>
 
           {onClose && (

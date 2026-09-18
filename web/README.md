@@ -1,32 +1,39 @@
-# React + TypeScript + Vite
+# nE Web Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The official single-page web client for the nE Autonomous Personal Music Server.
 
-Currently, two official plugins are available:
+Built with React 19, TypeScript, Tailwind CSS v4, Zustand, and the Web Audio API.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+* **3-Tier Master Audio Engine**: Integrated Web Audio DSP mastering pipeline (Direct, Broadcast Master, and Hyperion Studio Pro).
+* **Synchronized Lyrics**: Interactive karaoke-style LRC lyric presentation with line-by-line seeking.
+* **Spectrum Telemetry HUD**: Real-time 256-bin Fast Fourier Transform (FFT) visualizer.
+* **Smart & Custom Playlists**: Playlist curation, reordering, and dynamic mix playback.
+* **Autonomous Token Refresh**: Transparent 401 handling with HTTP-only refresh tokens.
+* **Keyboard Shortcuts**: Space (play/pause), arrow keys (seek/volume), M (mute), L (lyrics toggle).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development
 
-## Expanding the Oxlint configuration
+```bash
+# Install dependencies
+npm install
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+# Start development server with Hot Module Replacement
+npm run dev
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+# Build production bundle (embedded into the Go binary)
+npm run build
+
+# Lint source files
+npm run lint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Architecture
+
+* `src/lib/audioEngine.ts`: Web Audio DSP signal chain, harmonic wave-shaping, and binaural cross-feed.
+* `src/lib/api.ts`: Typed REST client with automatic token rotation.
+* `src/store/playerStore.ts`: Global playback state, queue sequencing, and volume management.
+* `src/components/`: Modular UI elements (NowPlayingPanel, AudioHUD, LyricsOverlay, PlayerBar).
+* `src/views/`: Primary views (Tracks, Albums, Artists, Playlists, History, Settings).
+

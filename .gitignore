@@ -1,12 +1,4 @@
-# Reference project (STRICTLY IGNORED - Do NOT push to GitHub)
-Reference/
-reference/
-Refrence/
-refrence/
-[Rr]eference/
-[Rr]efrence/
-
-# Binaries & Build Artifacts
+# Binaries and Build Artifacts
 bin/
 *.exe
 *.exe.meta
@@ -15,34 +7,28 @@ bin/
 *.dylib
 ne.exe
 
-# Node & Web Build Output
+# Node and Web Build Output
 web/node_modules/
 web/dist/
 web/.eslintcache
 
-# Cache & Scratch Folders
-cache/artwork/*
-cache/transcode/*
-!cache/artwork/.gitkeep
-!cache/transcode/.gitkeep
+# Runtime Storage and Cache Directories
+cache/
+data/
+config/
+music/
 scratch/
 *.tmp
 *.log
 
-# OS & Editor Files
+# OS and Editor Files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Test & Temporary Databases
+# Test and Temporary Databases
 live_backup.db
 test_sample.*
 
-# Sensitive Local Secrets & SQLite Databases
-data/*.db
-data/*.db-wal
-data/*.db-shm
-!data/.gitkeep
-config/*.key
